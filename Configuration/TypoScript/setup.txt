@@ -1,0 +1,13 @@
+# Module configuration
+module.tx_twimporter {
+    view {
+        templateRootPath = {$module.tx_twimporter.view.templateRootPath}
+        partialRootPath = {$module.tx_twimporter.view.partialRootPath}
+        layoutRootPath = {$module.tx_twimporter.view.layoutRootPath}
+    }
+
+    settings {
+        # Set to 1 for more flash messages when importing. Good for debugging and for understanding the source code
+        verboseFlashMessages = 0
+    }
+}

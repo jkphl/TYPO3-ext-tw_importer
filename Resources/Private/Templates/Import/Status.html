@@ -1,0 +1,29 @@
+<f:layout name="Module"/>
+<f:section name="Main">
+
+
+    <table class="status-table">
+        <thead>
+        <tr>
+            <th>Extension Key</th>
+            <th>Beschreibung</th>
+            <th></th>
+        </tr>
+        </thead>
+        <tbody>
+        <f:for each="{registeredImports}" as="import" key="extensionKey">
+            <tr>
+                <td>{extensionKey}</td>
+                <td>{import.title}</td>
+                <td>
+                    <f:link.action action="import" controller="Import" arguments="{extensionKey: extensionKey}">
+                        Import starten
+                    </f:link.action>
+                </td>
+            </tr>
+        </f:for>
+        </tbody>
+    </table>
+
+
+</f:section>
