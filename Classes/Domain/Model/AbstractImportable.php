@@ -34,7 +34,8 @@ use TYPO3\CMS\Core\Utility\GeneralUtility;
  * Importable model
  */
 abstract class AbstractImportable extends AbstractTranslatable {
-	
+
+
 	/**
 	 * Import date
 	 * 
@@ -55,7 +56,9 @@ abstract class AbstractImportable extends AbstractTranslatable {
 	 * @var \boolean
 	 */
 	protected $deleted;
-	
+
+
+
 	/**
 	 * Multivalue delimiter
 	 * 
@@ -69,10 +72,13 @@ abstract class AbstractImportable extends AbstractTranslatable {
 	 * @var unknown
 	 */
 	const MAIN_LANGUAGE = 'en';
-	
+
+
 	/************************************************************************************************
 	 * PUBLIC METHODS
 	 ***********************************************************************************************/
+
+
 
 	/**
 	 * Set the values from import data
@@ -80,10 +86,10 @@ abstract class AbstractImportable extends AbstractTranslatable {
 	 * @param \array $data				Import data
 	 * @param \array $mapping			Column mapping
 	 * @param \string $suffix			Language suffix
-	 * @param \array $extConfig			Extension Configuration
+	 * @param \array $extConfig			Additional configuration here
 	 * @return \boolean					Success
 	 */
-	public function import(array $data, array $mapping, $suffix, array $extConfig) {
+	public function import(array $data, array $mapping, $suffix, $extConfig = array()) {
 		$className							= get_class($this);
 		$languageSuffices					= \Tollwerk\TwImporter\Utility\SysLanguages::suffices();
 
@@ -92,7 +98,7 @@ abstract class AbstractImportable extends AbstractTranslatable {
 
 
 			// If the column applies to this model
-			if (array_key_exists($className, $config) && $config[$className]) {
+			if (is_array($config) && array_key_exists($className, $config) && $config[$className]) {
 				if ($config[$className] === true) {
 					$columnConfig			= array(
 						'column'			=> $column,

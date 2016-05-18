@@ -73,11 +73,172 @@ class ImportController extends \TYPO3\CMS\Extbase\Mvc\Controller\ActionControlle
     protected $objectManager = NULL;
 
     /**
+     * @var \TYPO3\CMS\Extbase\Persistence\Generic\PersistenceManager
+     * @inject
+     */
+    protected $persistenceManager = NULL;
+
+    /**
      * @var array
      */
     protected $languageSuffices = NULL;
 
 
+
+    /************************************************************************************************
+     * PROTECTED METHODS
+     ***********************************************************************************************/
+
+    /**
+     * @var string $extensionKey
+     * @return int The number of rows inserted into the temporary import table
+     */
+    protected function _createAndFillImportTable($extensionKey)
+    {
+
+        // Find import directory
+        $importDirectory = $this->fileUtility->validateDirectory(self::BASE_DIRECTORY . DIRECTORY_SEPARATOR . $extensionKey);
+        $this->flashMessage('Found import directory: ' . $importDirectory);
+
+        // Get the path to the XML of the import .ods file
+        $importFileAsXMLPath = $this->fileUtility->getImportFile($importDirectory);
+        $this->flashMessage('Found a valid import file. Parsed it to XML.');
+
+        // Get Mapping
+        $mapping = $this->mappingUtility->getMapping($extensionKey);
+        $this->flashMessage('Found valid mapping');
+
+        // Prepare temporary import table
+        $importTableName = $this->dbUtility->prepareTempImportTable($extensionKey, $mapping);
+        $this->flashMessage('Created temporary import table, name: ' . $importTableName);
+
+        // Parse the import file into the prepared temporary import table
+        $this->flashMessage('Reading import file according to mapping and insert records', '', FlashMessage::NOTICE);
+        $skippedColumns = array();
+        $rowsToImport = $this->fileUtility->processXMLFile($importFileAsXMLPath, $mapping, $skippedColumns);
+        if (count($skippedColumns)) {
+            foreach ($skippedColumns as $skippedColumn) {
+                $this->addFlashMessage('Skipped column: ' . $skippedColumn, '', FlashMessage::WARNING);
+            }
+        }
+
+
+        // Insert rows into temporary table
+        $rowsInserted = array();
+        foreach ($rowsToImport as $row) {
+            if ($this->dbUtility->insertRow($extensionKey, $row)) {
+                $rowsInserted[] = $row;
+            }
+        }
+
+        return $rowsInserted;
+    }
+
+    /**
+     * @param int $importId
+     * @param \Tollwerk\TwImporter\Domain\Repository\AbstractImportableRepository $repository
+     */
+    protected function _createOrUpdateObject($importId, $repository){
+        $object = $repository->findOneBySkuAndPid($importId,NULL);
+        return $object;
+    }
+
+    /**
+     * Import the (maybe bundled) $records into the actual objects / models / database tables.
+     * Based on \Tollwerk\TwBlog\Command\ImportCommandController->_importPageAndContent(array $bundle).
+     *
+     * @param string $extensionKey
+     * @param array $records
+     */
+    protected function _importRecords($extensionKey, $records)
+    {
+        $hierarchy = $this->mappingUtility->getHierarchy($extensionKey);
+
+        // TODO: Dynamic languages view $this->languagesUtility->..suffices .. aargh..
+        $languageSuffices = array(
+            0 => 'de'
+        );
+
+        foreach($records as $record){
+
+            foreach($languageSuffices as $sysLanguage => $languageSuffice){
+
+                $importId = $record['tx_twimporter_id'];
+
+                // TODO: Remove company specific calls, do it dynamically and recursive according to hierarchy
+                // TODO: pid from hierarchy file
+                $repositoryClass = 'Tollwerk\\TwImportertest\\Domain\\Repository\\CompanyRepository';
+                $objectClass = 'Tollwerk\\TwImportertest\\Domain\\Model\\Company';
+                $pid = 1016;
+                $translationParent = NULL;
+
+
+
+                // Object creation
+                // ---------------
+                    /**
+                     * @var \Tollwerk\TwImporter\Domain\Repository\AbstractImportableRepository $repository
+                     */
+                    $repository = $this->objectManager->get($repositoryClass);
+                    $emptySampleObject = $this->objectManager->get($objectClass);
+                    $object = $repository->findOneBySkuAndPid($importId,NULL);
+                    $isCreateNew = FALSE;
+    
+                    // If there is no object yet, create a new one
+                    // TODO: Outsourcing of object creation
+                    if(!($object instanceof $emptySampleObject)){
+                        $isCreateNew = TRUE;
+    
+                        /**
+                         * @var \Tollwerk\TwImporter\Domain\Model\AbstractImportable $object
+                         */
+                        $object = $this->objectManager->get($objectClass);
+                        $object->setPid($pid);
+                        $object->setTxTwimporterId($importId);
+    
+                        // Set correct values if it should be a translated object
+                        if($sysLanguage > 0){
+                            $object->_setProperty('_languageUid',$sysLanguage);
+                            $object->setTranslationLanguage($sysLanguage);
+                            $object->setTranslationParent($translationParent);
+                        }
+                    }
+    
+                    $this->addFlashMessage($languageSuffice.' | tx_importer_id: '.$importId.' | class: '.$objectClass.' | status: '.($isCreateNew ? 'create' : 'update'));
+    
+                    
+                // Call set or update properties of object
+                // ---------------------------------------
+                    $object->import(
+                        $record, 
+                        $this->mappingUtility->getMapping($extensionKey),
+                        $languageSuffice
+                    );
+                
+                
+                
+
+
+                // Create or update?
+                if($isCreateNew){
+                    $repository->add($object);
+                }else{
+                    $repository->update($object);
+                }
+
+                $this->persistenceManager->persistAll();
+
+
+                // TODO: REGISTER THIS CONTENT
+
+            }
+        }
+
+    }
+
+    /************************************************************************************************
+     * PUBLIC METHODS
+     ***********************************************************************************************/
 
     /**
      * Get module settings and stuff at controller initialization
@@ -168,117 +329,4 @@ class ImportController extends \TYPO3\CMS\Extbase\Mvc\Controller\ActionControlle
         }
     }
 
-    /**
-     * @var string $extensionKey
-     * @return int The number of rows inserted into the temporary import table
-     */
-    protected function _createAndFillImportTable($extensionKey)
-    {
-
-        // Find import directory
-        $importDirectory = $this->fileUtility->validateDirectory(self::BASE_DIRECTORY . DIRECTORY_SEPARATOR . $extensionKey);
-        $this->flashMessage('Found import directory: ' . $importDirectory);
-
-        // Get the path to the XML of the import .ods file
-        $importFileAsXMLPath = $this->fileUtility->getImportFile($importDirectory);
-        $this->flashMessage('Found a valid import file. Parsed it to XML.');
-
-        // Get Mapping
-        $mapping = $this->mappingUtility->getMapping($extensionKey);
-        $this->flashMessage('Found valid mapping');
-
-        // Prepare temporary import table
-        $importTableName = $this->dbUtility->prepareTempImportTable($extensionKey, $mapping);
-        $this->flashMessage('Created temporary import table, name: ' . $importTableName);
-
-        // Parse the import file into the prepared temporary import table
-        $this->flashMessage('Reading import file according to mapping and insert records', '', FlashMessage::NOTICE);
-        $skippedColumns = array();
-        $rowsToImport = $this->fileUtility->processXMLFile($importFileAsXMLPath, $mapping, $skippedColumns);
-        if (count($skippedColumns)) {
-            foreach ($skippedColumns as $skippedColumn) {
-                $this->addFlashMessage('Skipped column: ' . $skippedColumn, '', FlashMessage::WARNING);
-            }
-        }
-
-
-        // Insert rows into temporary table
-        $rowsInserted = array();
-        foreach ($rowsToImport as $row) {
-            if ($this->dbUtility->insertRow($extensionKey, $row)) {
-                $rowsInserted[] = $row;
-            }
-        }
-
-        return $rowsInserted;
-    }
-
-    /**
-     * @param int $importId
-     * @param \Tollwerk\TwImporter\Domain\Repository\AbstractImportableRepository $repository
-     */
-    protected function _createOrUpdateObject($importId, $repository){
-        $object = $repository->findOneBySkuAndPid($importId,NULL);
-        return $object;
-    }
-
-    
-    /**
-     * Import the (maybe bundled) $records into the actual objects / models / database tables.
-     * Based on \Tollwerk\TwBlog\Command\ImportCommandController->_importPageAndContent(array $bundle).
-     *
-     * @param string $extensionKey
-     * @param array $records
-     */
-    protected function _importRecords($extensionKey, $records)
-    {
-        $hierarchy = $this->mappingUtility->getHierarchy($extensionKey);
-
-        foreach($records as $record){
-
-
-            $importId = $record['tx_twimporter_id'];
-
-            // TODO: Remove company specific calls, do it dynamically and recursive according to hierarchy
-            // TODO: pid from hierarchy file
-            $repositoryClass = 'Tollwerk\\TwImportertest\\Domain\\Repository\\CompanyRepository';
-            $objectClass = 'Tollwerk\\TwImportertest\\Domain\\Model\\Company';
-            $pid = 1016;
-
-
-
-            // Object creation
-            // ---------------
-                /**
-                 * @var \Tollwerk\TwImporter\Domain\Repository\AbstractImportableRepository $repository
-                 */
-                $repository = $this->objectManager->get($repositoryClass);
-                $emptySampleObject = $this->objectManager->get($objectClass);
-                $object = $repository->findOneBySkuAndPid($importId,NULL);
-                $isCreateNew = FALSE;
-
-                // If there is no object yet, create a new one
-                if(!($object instanceof $emptySampleObject)){
-                    $isCreateNew = TRUE;
-
-                    /**
-                     * @var \Tollwerk\TwImporter\Domain\Model\AbstractImportable $object
-                     */
-                    $object = $this->objectManager->get($objectClass);
-                    $object->setPid($pid);
-                    
-                }
-
-                $this->addFlashMessage('tx_importer_id: '.$importId.' | class: '.$objectClass.' | status: '.($isCreateNew ? 'create' : 'update'));
-
-
-
-        }
-
-        
-    }
-
-
-    
-    
 }

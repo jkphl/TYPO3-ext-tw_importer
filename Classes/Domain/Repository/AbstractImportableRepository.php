@@ -83,11 +83,16 @@ abstract class AbstractImportableRepository extends AbstractTranslatableReposito
 	 * @return \TYPO3\CMS\Extbase\DomainObject\AbstractEntity		Object
 	 */
 	public function findOneBySkuAndPid($sku, $pid = NULL, $debug = FALSE) {
+
+
+
 		$query			= $this->createQuery();
 		$query->getQuerySettings()->setRespectStoragePage(FALSE);
 		$query->getQuerySettings()->setRespectSysLanguage(FALSE);
 		$query->getQuerySettings()->setIgnoreEnableFields(TRUE);
 		$query->getQuerySettings()->setIncludeDeleted(TRUE);
+
+
 
 
 		if($debug){
@@ -105,7 +110,11 @@ abstract class AbstractImportableRepository extends AbstractTranslatableReposito
 
 		$query->matching($query->logicalAnd($constraints));
 
+
+
 		$result = $query->execute()->getFirst();
+
+		
 
 		if($debug){
 			echo " result: ".gettype($result).' - '.get_class($result);

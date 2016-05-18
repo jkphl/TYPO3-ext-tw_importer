@@ -46,7 +46,8 @@ class SysLanguages {
      */
     public static function suffices() {
         if (self::$_languageSuffices === null) {
-            self::$_languageSuffices = array(0 => \Tollwerk\TwFacsimile\Domain\Model\AbstractImportable::MAIN_LANGUAGE);
+            // TODO: Hard wired main language not good
+            self::$_languageSuffices = array(0 => \Tollwerk\TwImporter\Domain\Model\AbstractImportable::MAIN_LANGUAGE);
 
             // Gather all languages
             $languageResult				= $GLOBALS['TYPO3_DB']->exec_SELECTquery('uid,language_isocode', 'sys_language', '');
