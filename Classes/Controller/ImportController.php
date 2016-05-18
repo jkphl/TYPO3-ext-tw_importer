@@ -61,6 +61,17 @@ class ImportController extends \TYPO3\CMS\Extbase\Mvc\Controller\ActionControlle
     protected $importDataUtility;
 
     /**
+     * @var \Tollwerk\TwImporter\Utility\SysLanguages
+     * @inject
+     */
+    protected $sysLanguageUtility;
+
+    /**
+     * @var array
+     */
+    protected $languageSuffices = NULL;
+
+    /**
      * Get module settings and stuff at controller initialization
      */
     public function initializeAction(){
@@ -130,15 +141,22 @@ class ImportController extends \TYPO3\CMS\Extbase\Mvc\Controller\ActionControlle
 
             // Step 1: Prepare everything
             // --------------------------
-            $this->addFlashMessage('Preparing import for extension key: ' . $extensionKey, '', FlashMessage::NOTICE);
-            $records = $this->_createAndFillImportTable($extensionKey);
-            $this->flashMessage('Inserted '.count($records).' rows into temporary table');
+                $this->addFlashMessage('Preparing import for extension key: ' . $extensionKey, '', FlashMessage::NOTICE);
+                $records = $this->_createAndFillImportTable($extensionKey);
+                $this->flashMessage('Inserted '.count($records).' rows into temporary table');
+
+
 
             // Step 2: Import data into real table, create objects etc.
             // --------------------------------------------------------
-            $this->addFlashMessage('Importing data from temporary table into extension','',FlashMessage::NOTICE);
-            // TODO: implement filterRecords() (Flag for updating / not updating in import file etc.)
+                $this->addFlashMessage('Importing data from temporary table into extension','',FlashMessage::NOTICE);
 
+                // TODO: implement filterRecords() (Flag for updating / not updating in import file etc.)
+                // TODO: move import file to archive before further processing (if(settings->archive))
+                
+                // TODO: implement the createBundles() function inside ImportData.php for real
+                $bundledRecords = $this->importDataUtility->createBundles($records); 
+                $this->_importRecords($bundledRecords);
 
 
 
@@ -191,4 +209,10 @@ class ImportController extends \TYPO3\CMS\Extbase\Mvc\Controller\ActionControlle
         return $rowsInserted;
     }
 
+    /**
+     * @param array $records
+     */
+    protected function _importRecords($records){
+        $this->addFlashMessage('importing '.count($records).' records now..');
+    }
 }

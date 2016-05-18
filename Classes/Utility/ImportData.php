@@ -31,49 +31,13 @@ use \TYPO3\CMS\Core\Utility\GeneralUtility;
 
 class ImportData
 {
-    public function createBundles($extensionKey)
+    /**
+     * @param  array $records
+     * @return array
+     */
+    public function createBundles($records)
     {
-        return TRUE;
-
-        $success = true;
-        $records = $GLOBALS['TYPO3_DB']->exec_SELECTquery(
-            '*',
-            \Tollwerk\TwImporter\Utility\Database::getTableName($extensionKey),
-            ''
-        );
-
-        if ($records) {
-            $bundle = array();
-
-            // Run through all records
-            while ($record = $GLOBALS['TYPO3_DB']->sql_fetch_assoc($records)) {
-
-                $sku = intval(trim($record['sku']));
-                if ($sku) {
-                    // If it's a primary facsimile
-                    $isPage = (($sku >= 100) && ($sku % 100 == 0));
-                    if ($isPage) {
-
-                        // If there's a pending bundle
-                        if (count($bundle)) {
-                            $success = $this->_importPageAndContent($bundle) && $success;
-                        }
-
-                        $bundle = array();
-                    }
-
-                    $bundle[] = $record;
-                }
-            }
-
-            // If there's a pending bundle
-            if (count($bundle)) {
-                $success = $this->_importPageAndContent($bundle) && $success;
-            }
-
-            $GLOBALS['TCA']['tx_twfacsimile_domain_model_price']['ctrl']['languageField'] = $languageField;
-        }
-
-        return $success;
+        // TODO: Create bundles according to import configuration and/or mapping
+        return $records;
     }
 }
