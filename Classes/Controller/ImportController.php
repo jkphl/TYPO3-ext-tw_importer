@@ -67,24 +67,27 @@ class ImportController extends \TYPO3\CMS\Extbase\Mvc\Controller\ActionControlle
     protected $sysLanguageUtility;
 
     /**
+     * @var \TYPO3\CMS\Extbase\Object\ObjectManager
+     * @inject
+     */
+    protected $objectManager = NULL;
+
+    /**
      * @var array
      */
     protected $languageSuffices = NULL;
 
+
+
     /**
      * Get module settings and stuff at controller initialization
      */
-    public function initializeAction(){
-
-        /**
-         * @var \TYPO3\CMS\Extbase\Object\ObjectManager $objectManager
-         */
-        $objectManager = \TYPO3\CMS\Core\Utility\GeneralUtility::makeInstance('TYPO3\\CMS\\Extbase\\Object\\ObjectManager');
-
+    public function initializeAction()
+    {
         /**
          * @var \TYPO3\CMS\Extbase\Configuration\BackendConfigurationManager $configurationManager
          */
-        $configurationManager = $objectManager->get('TYPO3\\CMS\\Extbase\\Configuration\\BackendConfigurationManager');
+        $configurationManager = $this->objectManager->get('TYPO3\\CMS\\Extbase\\Configuration\\BackendConfigurationManager');
 
         $fullConfiguration = $configurationManager->getConfiguration(
             $this->request->getControllerExtensionName(),
@@ -107,8 +110,9 @@ class ImportController extends \TYPO3\CMS\Extbase\Mvc\Controller\ActionControlle
      * @see \TYPO3\CMS\Core\Messaging\FlashMessage
      * @api
      */
-    public function flashMessage($messageBody, $messageTitle = '', $severity = \TYPO3\CMS\Core\Messaging\AbstractMessage::OK, $storeInSession = TRUE) {
-        if($this->settings['verboseFlashMessages']){
+    public function flashMessage($messageBody, $messageTitle = '', $severity = \TYPO3\CMS\Core\Messaging\AbstractMessage::OK, $storeInSession = TRUE)
+    {
+        if ($this->settings['verboseFlashMessages']) {
             parent::addFlashMessage($messageBody, $messageTitle, $severity, $storeInSession);
         }
     }
@@ -120,8 +124,8 @@ class ImportController extends \TYPO3\CMS\Extbase\Mvc\Controller\ActionControlle
     {
         // Hook for registering additional imports from other extensions
         if (is_array($GLOBALS['TYPO3_CONF_VARS']['EXTCONF']['tw_importer'])) {
-            foreach($GLOBALS['TYPO3_CONF_VARS']['EXTCONF']['tw_importer']['registeredImports'] as $additionalImportExtensionKey => $additionalImport) {
-               $registeredImports[$additionalImportExtensionKey] = $additionalImport;
+            foreach ($GLOBALS['TYPO3_CONF_VARS']['EXTCONF']['tw_importer']['registeredImports'] as $additionalImportExtensionKey => $additionalImport) {
+                $registeredImports[$additionalImportExtensionKey] = $additionalImport;
             }
         }
 
@@ -141,24 +145,22 @@ class ImportController extends \TYPO3\CMS\Extbase\Mvc\Controller\ActionControlle
 
             // Step 1: Prepare everything
             // --------------------------
-                $this->addFlashMessage('Preparing import for extension key: ' . $extensionKey, '', FlashMessage::NOTICE);
-                $records = $this->_createAndFillImportTable($extensionKey);
-                $this->flashMessage('Inserted '.count($records).' rows into temporary table');
-
+            $this->addFlashMessage('Preparing import for extension key: ' . $extensionKey, '', FlashMessage::NOTICE);
+            $records = $this->_createAndFillImportTable($extensionKey);
+            $this->flashMessage('Inserted ' . count($records) . ' rows into temporary table');
 
 
             // Step 2: Import data into real table, create objects etc.
             // --------------------------------------------------------
-                $this->addFlashMessage('Importing data from temporary table into extension','',FlashMessage::NOTICE);
+            $this->addFlashMessage('Importing data from temporary table into extension', '', FlashMessage::NOTICE);
 
-                // TODO: implement filterRecords() (Flag for updating / not updating in import file etc.)
-                // TODO: move import file to archive before further processing (if(settings->archive))
-                
-                // TODO: implement the createBundles() function inside ImportData.php for real
-                $bundledRecords = $this->importDataUtility->createBundles($records); 
-                $this->_importRecords($bundledRecords);
+            // TODO: implement filterRecords() (Flag for updating / not updating in import file etc.)
+            // TODO: move import file to archive before further processing (if(settings->archive))
 
+            // TODO: implement the createBundles() function inside ImportData.php for real
+            $bundledRecords = $this->importDataUtility->createBundles($records);
 
+            $this->_importRecords($extensionKey, $bundledRecords);
 
 
         } catch (\Exception $e) {
@@ -203,16 +205,80 @@ class ImportController extends \TYPO3\CMS\Extbase\Mvc\Controller\ActionControlle
         // Insert rows into temporary table
         $rowsInserted = array();
         foreach ($rowsToImport as $row) {
-            $rowsInserted[] = (!!$this->dbUtility->insertRow($extensionKey, $row));
+            if ($this->dbUtility->insertRow($extensionKey, $row)) {
+                $rowsInserted[] = $row;
+            }
         }
 
         return $rowsInserted;
     }
 
     /**
+     * @param int $importId
+     * @param \Tollwerk\TwImporter\Domain\Repository\AbstractImportableRepository $repository
+     */
+    protected function _createOrUpdateObject($importId, $repository){
+        $object = $repository->findOneBySkuAndPid($importId,NULL);
+        return $object;
+    }
+
+    
+    /**
+     * Import the (maybe bundled) $records into the actual objects / models / database tables.
+     * Based on \Tollwerk\TwBlog\Command\ImportCommandController->_importPageAndContent(array $bundle).
+     *
+     * @param string $extensionKey
      * @param array $records
      */
-    protected function _importRecords($records){
-        $this->addFlashMessage('importing '.count($records).' records now..');
+    protected function _importRecords($extensionKey, $records)
+    {
+        $hierarchy = $this->mappingUtility->getHierarchy($extensionKey);
+
+        foreach($records as $record){
+
+
+            $importId = $record['tx_twimporter_id'];
+
+            // TODO: Remove company specific calls, do it dynamically and recursive according to hierarchy
+            // TODO: pid from hierarchy file
+            $repositoryClass = 'Tollwerk\\TwImportertest\\Domain\\Repository\\CompanyRepository';
+            $objectClass = 'Tollwerk\\TwImportertest\\Domain\\Model\\Company';
+            $pid = 1016;
+
+
+
+            // Object creation
+            // ---------------
+                /**
+                 * @var \Tollwerk\TwImporter\Domain\Repository\AbstractImportableRepository $repository
+                 */
+                $repository = $this->objectManager->get($repositoryClass);
+                $emptySampleObject = $this->objectManager->get($objectClass);
+                $object = $repository->findOneBySkuAndPid($importId,NULL);
+                $isCreateNew = FALSE;
+
+                // If there is no object yet, create a new one
+                if(!($object instanceof $emptySampleObject)){
+                    $isCreateNew = TRUE;
+
+                    /**
+                     * @var \Tollwerk\TwImporter\Domain\Model\AbstractImportable $object
+                     */
+                    $object = $this->objectManager->get($objectClass);
+                    $object->setPid($pid);
+                    
+                }
+
+                $this->addFlashMessage('tx_importer_id: '.$importId.' | class: '.$objectClass.' | status: '.($isCreateNew ? 'create' : 'update'));
+
+
+
+        }
+
+        
     }
+
+
+    
+    
 }

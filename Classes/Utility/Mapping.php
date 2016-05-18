@@ -31,9 +31,6 @@ use \TYPO3\CMS\Core\Utility\GeneralUtility;
 
 class Mapping
 {
-    // TODO: All mapping specific stuff may be belong into an additional Mapping.php utility class
-    const MAPPING_FILENAME = 'Import.php';
-
     /**
      * @param string $extensionKey
      * @return array
@@ -51,5 +48,24 @@ class Mapping
         }
 
         return array_fill_keys(array_keys($mapping), null);
+    }
+
+    /**
+     * @param string $extensionKey
+     * @return array
+     * @throws \ErrorException
+     */
+    public function getHierarchy($extensionKey){
+        try{
+            $hierarchy = $GLOBALS['TYPO3_CONF_VARS']['EXTCONF']['tw_importer']['registeredImports'][$extensionKey]['hierarchy'];
+        }catch(\Exception $ex){
+            throw new \ErrorException("Could not get hierarchy. Check \$GLOBALS['TYPO3_CONF_VARS']['EXTCONF']['tw_importer']['registeredImports']['".$extensionKey."']['hierarchy'] in your ext_localconf.php");
+        }
+
+        if(!count($hierarchy)){
+            throw new \ErrorException("The hierarchy is empty! Check \$GLOBALS['TYPO3_CONF_VARS']['EXTCONF']['tw_importer']['registeredImports']['".$extensionKey."']['hierarchy'] in your ext_localconf.php");
+        }
+
+        return $hierarchy;
     }
 }
