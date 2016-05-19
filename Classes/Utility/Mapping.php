@@ -47,7 +47,7 @@ class Mapping
             throw new \ErrorException("The mapping is empty! Check \$GLOBALS['TYPO3_CONF_VARS']['EXTCONF']['tw_importer']['registeredImports']['".$extensionKey."']['mapping'] in your ext_localconf.php");
         }
 
-        return array_fill_keys(array_keys($mapping), null);
+        return $mapping;
     }
 
     /**

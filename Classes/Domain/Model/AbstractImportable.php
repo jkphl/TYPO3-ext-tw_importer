@@ -96,9 +96,9 @@ abstract class AbstractImportable extends AbstractTranslatable {
 		// Run through each column configuration
 		foreach ($mapping as $column => $config) {
 
-
 			// If the column applies to this model
 			if (is_array($config) && array_key_exists($className, $config) && $config[$className]) {
+
 				if ($config[$className] === true) {
 					$columnConfig			= array(
 						'column'			=> $column,
@@ -129,7 +129,7 @@ abstract class AbstractImportable extends AbstractTranslatable {
 				// Run through all columns and skip this one if it's for another language than the current
 				foreach ($languageSuffices as $languageSuffix) {
 					if (preg_match("%\_$languageSuffix$%", $column) && ($languageSuffix != $suffix)) {
-						// echo ' - Skipping '.GeneralUtility::underscoredToUpperCamelCase($columnConfig['column']).' --- '.$languageSuffix.' - '.$suffix.PHP_EOL;
+						// echo ' - Skipping '.GeneralUtility::underscoredToUpperCamelCase($columnConfig['column']).' --- '.$languageSuffix.' - '.$suffix.PHP_EOL.'<br />';
 						continue 2;
 					}
 				}
@@ -149,12 +149,12 @@ abstract class AbstractImportable extends AbstractTranslatable {
 
 				// If there's a special importer method
 				if (@is_callable(array($this, 'import'.$columnTranslated))) {
- 					// echo get_class($this).'->'.'import'.$columnTranslated;
+ 					// echo get_class($this).'->'.'import'.$columnTranslated.'<br />'.PHP_EOL;
 					call_user_func_array(array($this, 'import'.$columnTranslated), array($columnValue, $columnOrigValue, $extConfig, $data));
 					
 				// Else: if there's a setter for the column
 				} elseif (@is_callable(array($this, 'set'.$columnTranslated))) {
-					// echo get_class($this) . '->' . 'set' . $columnTranslated;
+					// echo get_class($this) . '->' . 'set' . $columnTranslated.'<br />'.PHP_EOL;
 					call_user_func_array(array($this, 'set'.$columnTranslated), array($columnValue, $columnOrigValue, $extConfig, $data));
 				}
 
@@ -162,7 +162,7 @@ abstract class AbstractImportable extends AbstractTranslatable {
 				// echo PHP_EOL;
 			}
 		}
-		
+
 		// Finalize the import
 		$this->_finalizeImport();
 	}

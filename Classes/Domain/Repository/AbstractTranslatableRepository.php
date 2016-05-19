@@ -50,16 +50,9 @@ abstract class AbstractTranslatableRepository extends AbstractEnhancedRepository
 	public function findOneByTranslationParent(\TYPO3\CMS\Extbase\DomainObject\AbstractEntity $parent, $sysLanguage = 0) {
 
 		if ($this->_tablename === null) {
-			return null;
+			throw new \ErrorException('$this->_tablename is NULL! Please set "protected $_tablename = \'tx_yourextensionkey_domain_model_yourmodelclassname\';" in '.get_class($this));
 		}
-
-		/*
-		echo PHP_EOL.' > pid: '.$parent->getPid().PHP_EOL;
-		echo PHP_EOL.' > translationParent: '.$parent->getUid().PHP_EOL;
-		echo PHP_EOL.' > translationLanguage: '.$sysLanguage.PHP_EOL;
-		*/
-
-
+		
 		$languageField = $GLOBALS['TCA'][$this->_tablename]['ctrl']['languageField'];
 		$GLOBALS['TCA'][$this->_tablename]['ctrl']['languageField'] = null;
 		$query			= $this->createQuery();
@@ -77,5 +70,32 @@ abstract class AbstractTranslatableRepository extends AbstractEnhancedRepository
 
 		$GLOBALS['TCA'][$this->_tablename]['ctrl']['languageField'] = $languageField;
 		return $result;
+	}
+
+	/**
+	 * @param \Tollwerk\TwImporter\Domain\Model\AbstractTranslatable $object
+	 * @throws \TYPO3\CMS\Extbase\Persistence\Exception\IllegalObjectTypeException
+	 */
+	public function add($object){
+		$languageField = $GLOBALS['TCA'][$this->_tablename]['ctrl']['languageField'];
+		$GLOBALS['TCA'][$this->_tablename]['ctrl']['languageField'] = null;
+			parent::add($object);
+		$GLOBALS['TCA'][$this->_tablename]['ctrl']['languageField'] = $languageField;
+	}
+
+	/**
+	 * Replaces an existing object with the same identifier by the given object
+	 *
+	 * @param object $modifiedObject The modified object
+	 * @throws \TYPO3\CMS\Extbase\Persistence\Exception\UnknownObjectException
+	 * @throws \TYPO3\CMS\Extbase\Persistence\Exception\IllegalObjectTypeException
+	 * @return void
+	 * @api
+	 */
+	public function update($modifiedObject){
+		$languageField = $GLOBALS['TCA'][$this->_tablename]['ctrl']['languageField'];
+		$GLOBALS['TCA'][$this->_tablename]['ctrl']['languageField'] = null;
+			parent::update($modifiedObject);
+		$GLOBALS['TCA'][$this->_tablename]['ctrl']['languageField'] = $languageField;
 	}
 }

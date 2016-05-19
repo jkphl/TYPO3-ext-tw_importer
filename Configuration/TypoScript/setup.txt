@@ -8,6 +8,9 @@ module.tx_twimporter {
 
     settings {
         # Set to 1 for more flash messages when importing. Good for debugging and for understanding the source code
-        verboseFlashMessages = 0
+        verboseFlashMessages = {$module.tx_twimporter.settings.verboseFlashMessages}
+
+        mainLanguage.suffix = {$module.tx_twimporter.settings.mainLanguage.suffix}
+
     }
 }

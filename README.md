@@ -16,7 +16,7 @@ tbd
 * All corresponding repositories must implement *\Tollwerk\TwImporter\Domain\Repository\AbstractImportableRepository*
 * Put a *ext_typoscript_setup.txt* in your extension directory. Each importable class must map some fields (tx_twimporter_id, sys_language_uid, l10n_parent, hidden, deleted).
 * All your importable classes must have translation enabled must be disabable and deletable. So the following columns must exist in each corresponding table: sys_language_uid, l10n_parent, hidden, deleted
-   
+* Your repositories extending \Tollwerk\TwImporter\Domain\Repository\AbstractImportableRepository must have a protected property named "_tablename" which stores the corresponding tablename, e.g. "*tx\_yourextensionkey\_domain\_model\_yourmodelclassname*".
 
 **Important:** Don't forget to clear all caches via the **install tool** after addding or changing stuff inside your ext_localconf.php!  
 

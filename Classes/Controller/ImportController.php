@@ -1,5 +1,6 @@
 <?php namespace Tollwerk\TwImporter\Controller;
 
+use Tollwerk\TwImporter\Utility\SysLanguages;
 use TYPO3\CMS\Core\Messaging\FlashMessage;
 use TYPO3\CMS\Core\Utility\DebugUtility;
 use TYPO3\CMS\Extbase\Utility\DebuggerUtility;
@@ -67,6 +68,12 @@ class ImportController extends \TYPO3\CMS\Extbase\Mvc\Controller\ActionControlle
     protected $sysLanguageUtility;
 
     /**
+     * @var \Tollwerk\TwImporter\Utility\Object
+     * @inject
+     */
+    protected $objectUtility;
+
+    /**
      * @var \TYPO3\CMS\Extbase\Object\ObjectManager
      * @inject
      */
@@ -84,7 +91,7 @@ class ImportController extends \TYPO3\CMS\Extbase\Mvc\Controller\ActionControlle
     protected $languageSuffices = NULL;
 
 
-
+    
     /************************************************************************************************
      * PROTECTED METHODS
      ***********************************************************************************************/
@@ -135,15 +142,6 @@ class ImportController extends \TYPO3\CMS\Extbase\Mvc\Controller\ActionControlle
     }
 
     /**
-     * @param int $importId
-     * @param \Tollwerk\TwImporter\Domain\Repository\AbstractImportableRepository $repository
-     */
-    protected function _createOrUpdateObject($importId, $repository){
-        $object = $repository->findOneBySkuAndPid($importId,NULL);
-        return $object;
-    }
-
-    /**
      * Import the (maybe bundled) $records into the actual objects / models / database tables.
      * Based on \Tollwerk\TwBlog\Command\ImportCommandController->_importPageAndContent(array $bundle).
      *
@@ -152,90 +150,66 @@ class ImportController extends \TYPO3\CMS\Extbase\Mvc\Controller\ActionControlle
      */
     protected function _importRecords($extensionKey, $records)
     {
+
         $hierarchy = $this->mappingUtility->getHierarchy($extensionKey);
 
-        // TODO: Dynamic languages view $this->languagesUtility->..suffices .. aargh..
-        $languageSuffices = array(
-            0 => 'de'
-        );
+        foreach ($records as $record) {
 
-        foreach($records as $record){
+            // TODO: Remove company specific calls, do it dynamically and recursive according to hierarchy
+            // TODO: pid from hierarchy file
+            // TODO: Optional translation (hierarchy)
+            $importId = $record['tx_twimporter_id'];
+            $repositoryClass = 'Tollwerk\\TwImportertest\\Domain\\Repository\\CompanyRepository';
+            $objectClass = 'Tollwerk\\TwImportertest\\Domain\\Model\\Company';
+            $pid = 1016;
 
-            foreach($languageSuffices as $sysLanguage => $languageSuffice){
+            // Which record? Which class?
+            $this->flashMessage('tw_importer_id: ' . $importId . ' | class: ' . $objectClass, '', FlashMessage::NOTICE);
 
-                $importId = $record['tx_twimporter_id'];
-
-                // TODO: Remove company specific calls, do it dynamically and recursive according to hierarchy
-                // TODO: pid from hierarchy file
-                $repositoryClass = 'Tollwerk\\TwImportertest\\Domain\\Repository\\CompanyRepository';
-                $objectClass = 'Tollwerk\\TwImportertest\\Domain\\Model\\Company';
-                $pid = 1016;
-                $translationParent = NULL;
-
-
+            foreach ($this->languageSuffices as $sysLanguage => $languageSuffice) {
 
                 // Object creation
                 // ---------------
-                    /**
-                     * @var \Tollwerk\TwImporter\Domain\Repository\AbstractImportableRepository $repository
-                     */
-                    $repository = $this->objectManager->get($repositoryClass);
-                    $emptySampleObject = $this->objectManager->get($objectClass);
-                    $object = $repository->findOneBySkuAndPid($importId,NULL);
-                    $isCreateNew = FALSE;
-    
-                    // If there is no object yet, create a new one
-                    // TODO: Outsourcing of object creation
-                    if(!($object instanceof $emptySampleObject)){
-                        $isCreateNew = TRUE;
-    
-                        /**
-                         * @var \Tollwerk\TwImporter\Domain\Model\AbstractImportable $object
-                         */
-                        $object = $this->objectManager->get($objectClass);
-                        $object->setPid($pid);
-                        $object->setTxTwimporterId($importId);
-    
-                        // Set correct values if it should be a translated object
-                        if($sysLanguage > 0){
-                            $object->_setProperty('_languageUid',$sysLanguage);
-                            $object->setTranslationLanguage($sysLanguage);
-                            $object->setTranslationParent($translationParent);
-                        }
-                    }
-    
-                    $this->addFlashMessage($languageSuffice.' | tx_importer_id: '.$importId.' | class: '.$objectClass.' | status: '.($isCreateNew ? 'create' : 'update'));
-    
-                    
+                $objectFoundOrCreated = $this->objectUtility->createOrGet($hierarchy, $importId, $sysLanguage);
+
+                /**
+                 * @var \Tollwerk\TwImporter\Domain\Model\AbstractImportable $object
+                 */
+                $object = $objectFoundOrCreated['object'];
+                $objectStatus = $objectFoundOrCreated['status'];
+
+
+                $this->flashMessage(
+                    $languageSuffice . ($sysLanguage == 0 ? ' (main language)' : ' (translation)' ).' | '.
+                    ''.
+                    'status: ' . $objectStatus,
+                    '',
+                    FlashMessage::INFO
+                );
+
+
                 // Call set or update properties of object
                 // ---------------------------------------
-                    $object->import(
-                        $record, 
-                        $this->mappingUtility->getMapping($extensionKey),
-                        $languageSuffice
-                    );
-                
-                
-                
+                $object->import(
+                    $record,
+                    $this->mappingUtility->getMapping($extensionKey),
+                    $languageSuffice
+                );
 
-
-                // Create or update?
-                if($isCreateNew){
-                    $repository->add($object);
-                }else{
-                    $repository->update($object);
-                }
-
+                $this->objectUtility->update($hierarchy,$object);
                 $this->persistenceManager->persistAll();
-
-
-                // TODO: REGISTER THIS CONTENT
-
             }
+
+            // Done for this record!
+            $this->addFlashMessage('imported '.$objectClass.' with tw_importer_id: ' . $importId);
+
         }
 
     }
 
+    
+    
+    
     /************************************************************************************************
      * PUBLIC METHODS
      ***********************************************************************************************/
@@ -245,17 +219,22 @@ class ImportController extends \TYPO3\CMS\Extbase\Mvc\Controller\ActionControlle
      */
     public function initializeAction()
     {
+
+
+        // Get typoscript settings for this module
         /**
          * @var \TYPO3\CMS\Extbase\Configuration\BackendConfigurationManager $configurationManager
          */
         $configurationManager = $this->objectManager->get('TYPO3\\CMS\\Extbase\\Configuration\\BackendConfigurationManager');
-
         $fullConfiguration = $configurationManager->getConfiguration(
             $this->request->getControllerExtensionName(),
             $this->request->getPluginName()
         );
-
         $this->settings = $fullConfiguration['settings'];
+
+        // Get defined languages
+        $this->languageSuffices = SysLanguages::suffices($this->settings['mainLanguage']['suffix']);
+
     }
 
     /**
@@ -306,26 +285,23 @@ class ImportController extends \TYPO3\CMS\Extbase\Mvc\Controller\ActionControlle
 
             // Step 1: Prepare everything
             // --------------------------
-            $this->addFlashMessage('Preparing import for extension key: ' . $extensionKey, '', FlashMessage::NOTICE);
+            $this->flashMessage('Preparing import for extension key: ' . $extensionKey, '', FlashMessage::NOTICE);
             $records = $this->_createAndFillImportTable($extensionKey);
             $this->flashMessage('Inserted ' . count($records) . ' rows into temporary table');
 
 
             // Step 2: Import data into real table, create objects etc.
             // --------------------------------------------------------
-            $this->addFlashMessage('Importing data from temporary table into extension', '', FlashMessage::NOTICE);
+            $this->flashMessage('Importing data from temporary table into extension', '', FlashMessage::NOTICE);
 
             // TODO: implement filterRecords() (Flag for updating / not updating in import file etc.)
             // TODO: move import file to archive before further processing (if(settings->archive))
 
-            // TODO: implement the createBundles() function inside ImportData.php for real
-            $bundledRecords = $this->importDataUtility->createBundles($records);
-
-            $this->_importRecords($extensionKey, $bundledRecords);
+            $this->_importRecords($extensionKey, $records);
 
 
         } catch (\Exception $e) {
-            $this->addFlashMessage($e->getMessage(), '', FlashMessage::ERROR);
+            $this->addFlashMessage($e->getMessage().' thrown in : '.$e->getFile().' on line '.$e->getLine(), '', FlashMessage::ERROR);
         }
     }
 

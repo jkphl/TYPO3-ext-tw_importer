@@ -8,4 +8,13 @@ module.tx_twimporter {
         layoutRootPath = EXT:tw_importer/Resources/Private/Backend/Layouts/
     }
 
+    settings {
+
+        # cat=module.tx_twimport_import//10; type=boolean; label= Verbose flash messages
+        verboseFlashMessages = 0
+
+        # cat=module.tx_twimport_import//30; type=string; label= Main Language suffix iso2
+        mainLanguage.suffix = en
+    }
+
 }

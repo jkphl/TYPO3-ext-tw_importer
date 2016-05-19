@@ -44,10 +44,10 @@ class SysLanguages {
      *
      * @return array			Language suffices
      */
-    public static function suffices() {
+    public static function suffices($mainLanguageSuffix = 'en') {
         if (self::$_languageSuffices === null) {
             // TODO: Hard wired main language not good
-            self::$_languageSuffices = array(0 => \Tollwerk\TwImporter\Domain\Model\AbstractImportable::MAIN_LANGUAGE);
+            self::$_languageSuffices = array(0 => $mainLanguageSuffix);
 
             // Gather all languages
             $languageResult				= $GLOBALS['TYPO3_DB']->exec_SELECTquery('uid,language_isocode', 'sys_language', '');
@@ -57,6 +57,13 @@ class SysLanguages {
                 }
             }
         }
+
+        // TODO: Remove this return statement. It's for testing developing purposes only
+        return array(
+            0 => 'de',
+            1 => 'en'
+        );
+
         return self::$_languageSuffices;
     }
 

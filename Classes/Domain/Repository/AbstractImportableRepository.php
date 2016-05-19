@@ -58,6 +58,7 @@ abstract class AbstractImportableRepository extends AbstractTranslatableReposito
 			$sysLanguageUid = 0;
 		}
 
+		// TODO: Dynamic table name
 		$statement = '
 			SELECT 		f.uid
 			FROM 		tx_twimportertest_domain_model_company 
@@ -82,15 +83,15 @@ abstract class AbstractImportableRepository extends AbstractTranslatableReposito
 	 * @param bool	$debug
 	 * @return \TYPO3\CMS\Extbase\DomainObject\AbstractEntity		Object
 	 */
-	public function findOneBySkuAndPid($sku, $pid = NULL, $debug = FALSE) {
+	public function findOneBySkuAndPid($sku, $pid = NULL, $debug = FALSE, $ignoreEnableFields = FALSE, $includeDeleted = FALSE) {
 
 
 
 		$query			= $this->createQuery();
 		$query->getQuerySettings()->setRespectStoragePage(FALSE);
 		$query->getQuerySettings()->setRespectSysLanguage(FALSE);
-		$query->getQuerySettings()->setIgnoreEnableFields(TRUE);
-		$query->getQuerySettings()->setIncludeDeleted(TRUE);
+		$query->getQuerySettings()->setIgnoreEnableFields($ignoreEnableFields);
+		$query->getQuerySettings()->setIncludeDeleted($includeDeleted);
 
 
 
