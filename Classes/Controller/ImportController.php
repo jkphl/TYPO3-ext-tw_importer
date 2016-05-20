@@ -323,7 +323,7 @@ class ImportController extends \TYPO3\CMS\Extbase\Mvc\Controller\ActionControlle
             // TODO: move import file to archive before further processing (if(settings->archive))
 
             $this->_importRecords($extensionKey, $records);
-            $this->addFlashMessage('Done with import for extension key: '.$extensionKey,'',FlashMessage::NOTICE);
+            $this->addFlashMessage('Done with import for extension key: '.$extensionKey);
 
         } catch (\Exception $e) {
             $this->addFlashMessage($e->getMessage() . ' thrown in : ' . $e->getFile() . ' on line ' . $e->getLine(), '', FlashMessage::ERROR);
