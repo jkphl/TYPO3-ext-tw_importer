@@ -68,4 +68,33 @@ class Mapping
 
         return $hierarchy;
     }
+
+    /**
+     * @param array $record
+     * @param array $mustBeSet
+     * @param array $mustBeEmpty
+     * @return bool
+     */
+    public function checkHierarchyConditions($record,$mustBeSet = array(),$mustBeEmpty = array()){
+
+        // Check all fields that must be set
+        if(is_array($mustBeSet) && count($mustBeSet)){
+            foreach($mustBeSet as $key => $fieldname){
+                if(empty($record[$fieldname])){
+                    return FALSE;
+                }
+            }
+        }
+        
+        // Check all fields that must be empty
+        if(is_array($mustBeEmpty) && count($mustBeEmpty)){
+            foreach($mustBeEmpty as $key => $fieldname){
+                if(!empty($record[$fieldname])){
+                    return FALSE;
+                }
+            }
+        }
+        
+        return TRUE;
+    }
 }

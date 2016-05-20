@@ -33,7 +33,6 @@ use \TYPO3\CMS\Core\Utility\GeneralUtility;
  */
 class Object
 {
-
     /**
      * @var \TYPO3\CMS\Extbase\Object\ObjectManager
      * @inject

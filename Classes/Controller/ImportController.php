@@ -91,7 +91,6 @@ class ImportController extends \TYPO3\CMS\Extbase\Mvc\Controller\ActionControlle
     protected $languageSuffices = NULL;
 
 
-    
     /************************************************************************************************
      * PROTECTED METHODS
      ***********************************************************************************************/
@@ -102,6 +101,7 @@ class ImportController extends \TYPO3\CMS\Extbase\Mvc\Controller\ActionControlle
      */
     protected function _createAndFillImportTable($extensionKey)
     {
+        $this->flashMessage('### METHOD ### _createAndFillImportTable()' . $importDirectory, '', FlashMessage::NOTICE);
 
         // Find import directory
         $importDirectory = $this->fileUtility->validateDirectory(self::BASE_DIRECTORY . DIRECTORY_SEPARATOR . $extensionKey);
@@ -150,66 +150,88 @@ class ImportController extends \TYPO3\CMS\Extbase\Mvc\Controller\ActionControlle
      */
     protected function _importRecords($extensionKey, $records)
     {
+        $this->flashMessage('### METHOD ### _importRecords()' . $importDirectory, '', FlashMessage::NOTICE);
 
         $hierarchy = $this->mappingUtility->getHierarchy($extensionKey);
+        $objectClass = key($hierarchy);
+        $objectConf = $hierarchy[$objectClass];
 
         foreach ($records as $record) {
+            // Check the field conditions for this hierarchy
+            $mustBeSet = $objectConf['conditions']['mustBeSet'];
+            $mustBeEmpty = $objectConf['conditions']['mustBeEmpty'];
 
-            // TODO: Remove company specific calls, do it dynamically and recursive according to hierarchy
-            // TODO: pid from hierarchy file
-            // TODO: Optional translation (hierarchy)
-            $importId = $record['tx_twimporter_id'];
-            $repositoryClass = 'Tollwerk\\TwImportertest\\Domain\\Repository\\CompanyRepository';
-            $objectClass = 'Tollwerk\\TwImportertest\\Domain\\Model\\Company';
-            $pid = 1016;
-
-            // Which record? Which class?
-            $this->flashMessage('tw_importer_id: ' . $importId . ' | class: ' . $objectClass, '', FlashMessage::NOTICE);
-
-            foreach ($this->languageSuffices as $sysLanguage => $languageSuffice) {
-
-                // Object creation
-                // ---------------
-                $objectFoundOrCreated = $this->objectUtility->createOrGet($hierarchy, $importId, $sysLanguage);
-
-                /**
-                 * @var \Tollwerk\TwImporter\Domain\Model\AbstractImportable $object
-                 */
-                $object = $objectFoundOrCreated['object'];
-                $objectStatus = $objectFoundOrCreated['status'];
-
-
+            $fieldConditonsOk = $this->mappingUtility->checkHierarchyConditions($record,$mustBeSet,$mustBeEmpty);
+            if(!$fieldConditonsOk){
+                $this->_importRecordRecursively($extensionKey, $record, $hierarchy);
+            }else{
                 $this->flashMessage(
-                    $languageSuffice . ($sysLanguage == 0 ? ' (main language)' : ' (translation)' ).' | '.
-                    ''.
-                    'status: ' . $objectStatus,
+                    'tx_twimporter_id: '.$record['tx_twimporter_id'].' | Field conditions do not fit for current class '.$objectClass.', moving on.. | Must be set: '.(count($mustBeSet) ? implode(', ',$mustBeSet) : ' none ').' | Must be empty: '.(count($mustBeEmpty) ? implode(', ',$mustBeEmpty) : 'none'),
                     '',
-                    FlashMessage::INFO
+                    FlashMessage::WARNING
                 );
-
-
-                // Call set or update properties of object
-                // ---------------------------------------
-                $object->import(
-                    $record,
-                    $this->mappingUtility->getMapping($extensionKey),
-                    $languageSuffice
-                );
-
-                $this->objectUtility->update($hierarchy,$object);
-                $this->persistenceManager->persistAll();
             }
-
-            // Done for this record!
-            $this->addFlashMessage('imported '.$objectClass.' with tw_importer_id: ' . $importId);
-
         }
+    }
+
+    /**
+     * @param string $extensionKey
+     * @param array $record
+     * @param array $hierarchy
+     */
+    protected function _importRecordRecursively($extensionKey, $record, $hierarchy)
+    {
+        
+        $this->flashMessage('### METHOD ### _importRecordRecursively() (Recursive call for nested objects)' . $importDirectory, '', FlashMessage::NOTICE);
+        $importId = $record['tx_twimporter_id'];
+
+        $objectClass = key($hierarchy);
+        $objectConf = $hierarchy[$objectClass];
+
+        $this->flashMessage('tw_importer_id: ' . $importId . ' | class: ' . $objectClass, '', FlashMessage::NOTICE);
+
+
+        foreach ($this->languageSuffices as $sysLanguage => $languageSuffice) {
+
+            // Object creation
+            // ---------------
+            $objectFoundOrCreated = $this->objectUtility->createOrGet($hierarchy, $importId, $sysLanguage);
+
+            /**
+             * @var \Tollwerk\TwImporter\Domain\Model\AbstractImportable $object
+             */
+            $object = $objectFoundOrCreated['object'];
+            $objectStatus = $objectFoundOrCreated['status'];
+
+
+            $this->flashMessage(
+                $languageSuffice . ($sysLanguage == 0 ? ' (main language)' : ' (translation)') . ' | ' .
+                '' .
+                'status: ' . $objectStatus,
+                '',
+                FlashMessage::INFO
+            );
+
+
+            // Call set or update properties of object
+            // ---------------------------------------
+            $object->import(
+                $record,
+                $this->mappingUtility->getMapping($extensionKey),
+                $languageSuffice
+            );
+
+            $this->objectUtility->update($hierarchy, $object);
+            $this->persistenceManager->persistAll();
+        }
+        $this->addFlashMessage('imported ' . $objectClass . ' with tw_importer_id: ' . $importId);
+
+        // Now import all children
+
 
     }
 
-    
-    
-    
+
     /************************************************************************************************
      * PUBLIC METHODS
      ***********************************************************************************************/
@@ -281,11 +303,14 @@ class ImportController extends \TYPO3\CMS\Extbase\Mvc\Controller\ActionControlle
      */
     public function importAction($extensionKey)
     {
+        $this->flashMessage('### METHOD ### importAction()' . $importDirectory, '', FlashMessage::NOTICE);
+
+
         try {
 
             // Step 1: Prepare everything
             // --------------------------
-            $this->flashMessage('Preparing import for extension key: ' . $extensionKey, '', FlashMessage::NOTICE);
+            $this->addFlashMessage('Starting import for extension key: ' . $extensionKey, '', FlashMessage::NOTICE);
             $records = $this->_createAndFillImportTable($extensionKey);
             $this->flashMessage('Inserted ' . count($records) . ' rows into temporary table');
 
@@ -298,10 +323,10 @@ class ImportController extends \TYPO3\CMS\Extbase\Mvc\Controller\ActionControlle
             // TODO: move import file to archive before further processing (if(settings->archive))
 
             $this->_importRecords($extensionKey, $records);
-
+            $this->addFlashMessage('Done with import for extension key: '.$extensionKey,'',FlashMessage::NOTICE);
 
         } catch (\Exception $e) {
-            $this->addFlashMessage($e->getMessage().' thrown in : '.$e->getFile().' on line '.$e->getLine(), '', FlashMessage::ERROR);
+            $this->addFlashMessage($e->getMessage() . ' thrown in : ' . $e->getFile() . ' on line ' . $e->getLine(), '', FlashMessage::ERROR);
         }
     }
 
