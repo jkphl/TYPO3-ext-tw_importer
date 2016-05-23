@@ -120,7 +120,9 @@ class File
 
                     // Else: data row
                 } else {
-                    $record = $mapping;
+
+                    $mappingKeys = array_keys($mapping);
+                    $record = array_fill_keys($mappingKeys,'');
 
                     // Run through all columns
                     foreach ($columns as $columnIndex => $columnValue) {
