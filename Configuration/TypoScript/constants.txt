@@ -13,8 +13,13 @@ module.tx_twimporter {
         # cat=module.tx_twimport_import//10; type=boolean; label= Verbose flash messages
         verboseFlashMessages = 0
 
-        # cat=module.tx_twimport_import//30; type=string; label= Main Language suffix iso2
-        mainLanguage.suffix = en
+        languages {
+            # cat=module.tx_twimport_import//20; type=string; label= Default language suffix iso2
+            defaultSuffix = en
+
+            # cat=module.tx_twimport_import//20; type=string; label= Active none default languages
+            translate =
+        }
     }
 
 }

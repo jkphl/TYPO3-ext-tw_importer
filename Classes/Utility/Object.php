@@ -26,6 +26,7 @@ namespace Tollwerk\TwImporter\Utility;
  *  This copyright notice MUST APPEAR in all copies of the script!
  ***************************************************************/
 
+use Tollwerk\TwImporter\Domain\Model\AbstractImportable;
 use \TYPO3\CMS\Core\Utility\GeneralUtility;
 
 /**
@@ -44,6 +45,15 @@ class Object
      * @inject
      */
     protected $persistenceManager = NULL;
+
+    /**
+     * Array for storing current parent objects when
+     * ImportController->_importRecords() get's called recursively
+     *
+     * @var array
+     */
+    protected $parentRegistry = array();
+
 
     /**
      * @param string $objectClass
@@ -163,5 +173,68 @@ class Object
         $repository = $this->objectManager->get($objectConf['repository']);
         $repository->update($object);
         $this->persistenceManager->persistAll();
+    }
+
+    /**
+     * @param \Tollwerk\TwImporter\Domain\Model\AbstractImportable $object
+     * @param int $level
+     * @param int $sysLanguage
+     * @return bool
+     */
+    public function addParentToRegistry($object,$level,$sysLanguage){
+        if($level < 0){
+            return FALSE;
+        }
+
+        if(!is_array($this->parentRegistry[$sysLanguage])){
+            $this->parentRegistry[$sysLanguage] = array();
+        }
+
+        $this->parentRegistry[$sysLanguage][$level] = $object;
+        return TRUE;
+    }
+
+    /**
+     * @param \Tollwerk\TwImporter\Domain\Model\AbstractImportable $child
+     * @param array $childConf
+     * @param int $childRegistryLevel
+     * @param int $sysLanguage
+     * @return bool
+     */
+    public function addChildToParent($child, $childConf, $childRegistryLevel, $sysLanguage){
+
+        // First, try to get the parent for the $child.
+        // If there is no parent, then we don't need to proceed
+        // ----------------------------------------------------
+        $parentRegistryLevel = $childRegistryLevel-1;
+        if($parentRegistryLevel < 0 || $parentRegistryLevel >= count($this->parentRegistry[$sysLanguage])){
+            return FALSE;
+        }
+
+        $parentObject = $this->parentRegistry[$sysLanguage][$parentRegistryLevel];
+        if(!($parentObject instanceof \Tollwerk\TwImporter\Domain\Model\AbstractImportable)){
+            return FALSE;
+        }
+
+        // Get classnames for $parentObject and $child without their namespaces
+        // --------------------------------------------------------------------
+        $reflectionClass = new \ReflectionClass(get_class($child));
+        $childClassname = $reflectionClass->getShortName();
+        $reflectionClass = new \ReflectionClass(get_class($parentObject));
+        $parentClassname = $reflectionClass->getShortName();
+
+        // Finally, add child to parent according to $addToParentMode defined in hierarchy
+        // -------------------------------------------------------------------------------
+
+        if($childConf['parentAddImportChild']){
+            $parentObject->addImportChild($child,$childConf);
+        }else{
+            $methodName = 'add'.$childClassname;
+            $parentObject->{$methodName}($child);
+            $this->persistenceManager->persistAll();
+        }
+
+
+        return TRUE;
     }
 }

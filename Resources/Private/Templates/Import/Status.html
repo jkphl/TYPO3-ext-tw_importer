@@ -1,6 +1,10 @@
 <f:layout name="Module"/>
 <f:section name="Main">
 
+    <div class="active-languages">
+        <strong>Active languages</strong>:
+        <f:for each="{languages}" key="sysLanguage" as="languageSuffix" iteration="i"><f:if condition="{i.index} > 0">, </f:if><span class="active-language">{languageSuffix} ({sysLanguage})</span></f:for>
+    </div>
 
     <table class="status-table">
         <thead>

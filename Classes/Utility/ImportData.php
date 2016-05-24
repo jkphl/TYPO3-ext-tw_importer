@@ -31,13 +31,5 @@ use \TYPO3\CMS\Core\Utility\GeneralUtility;
 
 class ImportData
 {
-    /**
-     * @param  array $records
-     * @return array
-     */
-    public function createBundles($records)
-    {
-        // TODO: Create bundles according to import configuration and/or mapping
-        return $records;
-    }
+
 }

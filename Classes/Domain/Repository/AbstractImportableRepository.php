@@ -35,10 +35,16 @@ use \TYPO3\CMS\Core\Utility\GeneralUtility;
  */
 abstract class AbstractImportableRepository extends AbstractTranslatableRepository {
 
+	
+	
+	
 	/**
 	 * @var string
 	 */
 	protected $field_sku = 'tx_twimporter_id';
+
+
+
 
 	/**
 	 * Find all  uids
@@ -58,10 +64,9 @@ abstract class AbstractImportableRepository extends AbstractTranslatableReposito
 			$sysLanguageUid = 0;
 		}
 
-		// TODO: Dynamic table name
 		$statement = '
 			SELECT 		f.uid
-			FROM 		tx_twimportertest_domain_model_company 
+			FROM 		'.$this->_tablename.'
 			WHERE		f.deleted = 0 AND f.hidden = 0 AND sys_language_uid = ' . $sysLanguageUid;
 
 		$query->statement($statement);

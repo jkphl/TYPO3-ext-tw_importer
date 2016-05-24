@@ -31,7 +31,8 @@ use \TYPO3\CMS\Core\Utility\GeneralUtility;
 /**
  * Utility class for getting bits of information via ajax
  */
-class SysLanguages {
+class SysLanguages
+{
     /**
      * Language suffices
      *
@@ -41,28 +42,28 @@ class SysLanguages {
 
     /**
      * Return a list of all registered system language suffices
+     * @var string $languages
      *
-     * @return array			Language suffices
+     * @return array            Language suffices
      */
-    public static function suffices($mainLanguageSuffix = 'en') {
+    public static function suffices($languages)
+    {
         if (self::$_languageSuffices === null) {
-            // TODO: Hard wired main language not good
-            self::$_languageSuffices = array(0 => $mainLanguageSuffix);
+            self::$_languageSuffices = array(0 => $languages['defaultSuffix']);
 
             // Gather all languages
-            $languageResult				= $GLOBALS['TYPO3_DB']->exec_SELECTquery('uid,language_isocode', 'sys_language', '');
-            if ($languageResult) {
+            $languageResult = $GLOBALS['TYPO3_DB']->exec_SELECTquery(
+                'uid,language_isocode',
+                'sys_language',
+                (strlen($languages['translate']) ? 'uid IN ('.$languages['translate'].')' : '')
+            );
+
+            if ($languageResult && strlen($languages['translate'])) {
                 while ($language = $GLOBALS['TYPO3_DB']->sql_fetch_assoc($languageResult)) {
                     self::$_languageSuffices[intval($language['uid'])] = $language['language_isocode'];
                 }
             }
         }
-
-        // TODO: Remove this return statement. It's for testing developing purposes only
-        return array(
-            0 => 'de',
-            1 => 'en'
-        );
 
         return self::$_languageSuffices;
     }
@@ -70,21 +71,23 @@ class SysLanguages {
     /**
      * Return the language suffix for a system language ID
      *
-     * @param \int $sysLanguageUid		System lanugage ID
-     * @return \string					Language suffix
+     * @param \int $sysLanguageUid System lanugage ID
+     * @return \string                    Language suffix
      */
-    public static function suffix($sysLanguageUid) {
-        $languageSuffices				= self::suffices();
+    public static function suffix($sysLanguageUid)
+    {
+        $languageSuffices = self::suffices();
         return array_key_exists($sysLanguageUid, $languageSuffices) ? $languageSuffices[$sysLanguageUid] : null;
     }
 
     /**
      * Return the ID of a language by suffix
      *
-     * @param string $suffix			Language suffix
-     * @return int						System language ID
+     * @param string $suffix Language suffix
+     * @return int                        System language ID
      */
-    public static function id($suffix) {
+    public static function id($suffix)
+    {
         return array_search($suffix, self::suffices());
     }
 }

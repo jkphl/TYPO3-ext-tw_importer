@@ -10,7 +10,12 @@ module.tx_twimporter {
         # Set to 1 for more flash messages when importing. Good for debugging and for understanding the source code
         verboseFlashMessages = {$module.tx_twimporter.settings.verboseFlashMessages}
 
-        mainLanguage.suffix = {$module.tx_twimporter.settings.mainLanguage.suffix}
+        languages {
+            # Because the default language could be something other than 'en', the defaultSuffix must be set explicitly
+            defaultSuffix = {$module.tx_twimporter.settings.languages.defaultSuffix}
 
+            # Comma separated list of all none-default ( > 0) system languages that should be used for the import
+            translate = {$module.tx_twimporter.settings.languages.translate}
+        }
     }
 }

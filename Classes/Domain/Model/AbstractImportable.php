@@ -37,6 +37,11 @@ abstract class AbstractImportable extends AbstractTranslatable {
 
 
 	/**
+	 * @var int
+	 */
+	protected $txTwimporterId;
+
+	/**
 	 * Import date
 	 * 
 	 * @var \int
@@ -57,8 +62,6 @@ abstract class AbstractImportable extends AbstractTranslatable {
 	 */
 	protected $deleted;
 
-
-
 	/**
 	 * Multivalue delimiter
 	 * 
@@ -77,8 +80,6 @@ abstract class AbstractImportable extends AbstractTranslatable {
 	/************************************************************************************************
 	 * PUBLIC METHODS
 	 ***********************************************************************************************/
-
-
 
 	/**
 	 * Set the values from import data
@@ -166,6 +167,32 @@ abstract class AbstractImportable extends AbstractTranslatable {
 		// Finalize the import
 		$this->_finalizeImport();
 	}
+
+	/**
+	 * @param \Tollwerk\TwImporter\Domain\Model\AbstractImportable $child
+	 * @param array $childConf
+	 */
+	public function addImportChild($child,$childConf){
+		// TODO: Document addImportChild()
+	}
+
+
+	/**
+	 * @return int
+	 */
+	public function getTxTwimporterId()
+	{
+		return $this->txTwimporterId;
+	}
+
+	/**
+	 * @param int $txTwimporterId
+	 */
+	public function setTxTwimporterId($txTwimporterId)
+	{
+		$this->txTwimporterId = $txTwimporterId;
+	}
+
 
 	/**
 	 * Return the import date

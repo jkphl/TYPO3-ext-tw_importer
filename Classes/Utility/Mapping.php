@@ -71,11 +71,13 @@ class Mapping
 
     /**
      * @param array $record
-     * @param array $mustBeSet
-     * @param array $mustBeEmpty
+     * @param array $objectConf
      * @return bool
      */
-    public function checkHierarchyConditions($record,$mustBeSet = array(),$mustBeEmpty = array()){
+    public function checkHierarchyConditions($record,$objectConf){
+
+        $mustBeSet = $objectConf['conditions']['mustBeSet'];
+        $mustBeEmpty = $objectConf['conditions']['mustBeEmpty'];
 
         // Check all fields that must be set
         if(is_array($mustBeSet) && count($mustBeSet)){
