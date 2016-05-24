@@ -171,8 +171,9 @@ abstract class AbstractImportable extends AbstractTranslatable {
 	/**
 	 * @param \Tollwerk\TwImporter\Domain\Model\AbstractImportable $child
 	 * @param array $childConf
+	 * @param int $sysLanguage
 	 */
-	public function addImportChild($child,$childConf){
+	public function addImportChild($child,$childConf,$sysLanguage){
 		// TODO: Document addImportChild()
 	}
 

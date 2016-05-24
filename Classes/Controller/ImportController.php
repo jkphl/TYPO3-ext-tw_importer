@@ -101,8 +101,6 @@ class ImportController extends \TYPO3\CMS\Extbase\Mvc\Controller\ActionControlle
      */
     protected function _createAndFillImportTable($extensionKey)
     {
-        $this->flashMessage('### METHOD ### _createAndFillImportTable()', '', FlashMessage::NOTICE);
-
         // Find import directory
         $importDirectory = $this->fileUtility->validateDirectory(self::BASE_DIRECTORY . DIRECTORY_SEPARATOR . $extensionKey);
         $this->flashMessage('Found import directory: ' . $importDirectory);
@@ -125,7 +123,7 @@ class ImportController extends \TYPO3\CMS\Extbase\Mvc\Controller\ActionControlle
         $rowsToImport = $this->fileUtility->processXMLFile($importFileAsXMLPath, $mapping, $skippedColumns);
         if (count($skippedColumns)) {
             foreach ($skippedColumns as $skippedColumn) {
-                $this->flashMessage('Skipped column: ' . $skippedColumn, '', FlashMessage::WARNING);
+                $this->addFlashMessage('Skipped column: ' . $skippedColumn, '', FlashMessage::WARNING);
             }
         }
 
@@ -149,6 +147,11 @@ class ImportController extends \TYPO3\CMS\Extbase\Mvc\Controller\ActionControlle
      */
     protected function _importRecords($extensionKey, $record, $hierarchy, $registryLevel = 0)
     {
+        $flashMessageSpacer = '';
+        for ($i = 0; $i < $registryLevel; $i++) {
+            $flashMessageSpacer .= '--- ';
+        }
+
 
         $objectClass = key($hierarchy);
         $objectConf = $hierarchy[$objectClass];
@@ -156,7 +159,7 @@ class ImportController extends \TYPO3\CMS\Extbase\Mvc\Controller\ActionControlle
 
         // Check the field conditions for this hierarchy, skip if not ok
         if (!$this->mappingUtility->checkHierarchyConditions($record, $objectConf)) {
-            $this->addFlashMessage(
+            $this->flashMessage(
                 'tx_twimporter_id: ' . $record['tx_twimporter_id'] . ' | Field conditions do not fit for current class ' . $objectClass . ', moving on.. ',
                 '',
                 FlashMessage::WARNING
@@ -164,7 +167,6 @@ class ImportController extends \TYPO3\CMS\Extbase\Mvc\Controller\ActionControlle
         } else {
 
             foreach ($this->languageSuffices as $sysLanguage => $languageSuffice) {
-                $this->addFlashMessage('language: ' . $languageSuffice . ' | importId: ' . $importId . ' | objectClass: ' . $objectClass, '', FlashMessage::INFO);
 
                 // Object creation
                 // ---------------
@@ -174,7 +176,6 @@ class ImportController extends \TYPO3\CMS\Extbase\Mvc\Controller\ActionControlle
                  */
                 $object = $objectFoundOrCreated['object'];
                 $objectStatus = $objectFoundOrCreated['status'];
-                $this->flashMessage($languageSuffice . ($sysLanguage == 0 ? ' (main language)' : ' (translation)') . ' | ' . 'uid: '.$object->getUid().' | status: ' . $objectStatus, '', FlashMessage::INFO);
 
 
                 // Call set or update properties of object
@@ -188,11 +189,14 @@ class ImportController extends \TYPO3\CMS\Extbase\Mvc\Controller\ActionControlle
                 $this->persistenceManager->persistAll();
 
 
+                $this->flashMessage($flashMessageSpacer . 'importId: ' . $importId . ' | language: ' . $languageSuffice . ' | object: ' . $objectClass . ' | uid: ' . $object->getUid() . ' | status: ' . $objectStatus);
+
+
                 // Add this object to the $parents array
                 // and try to add current object to a parent, if available
                 // ---------------------------------------------------
-                $this->objectUtility->addParentToRegistry($object, $registryLevel,$sysLanguage);
-                $this->objectUtility->addChildToParent($object, $objectConf, $registryLevel,$sysLanguage);
+                $this->objectUtility->addParentToRegistry($object, $registryLevel, $sysLanguage);
+                $this->objectUtility->addChildToParent($object, $objectConf, $registryLevel, $sysLanguage);
 
 
             }
@@ -201,7 +205,7 @@ class ImportController extends \TYPO3\CMS\Extbase\Mvc\Controller\ActionControlle
         // Call _importRecords recursively for all children
         // ------------------------------------------------
         foreach ($objectConf['children'] as $childObjectClass => $childObjectConf) {
-            $this->addFlashMessage('_importRecords for child: ' . $childObjectClass, '', FlashMessage::WARNING);
+
             $this->_importRecords($extensionKey, $record, array($childObjectClass => $childObjectConf), ($registryLevel + 1));
         }
 
@@ -278,8 +282,6 @@ class ImportController extends \TYPO3\CMS\Extbase\Mvc\Controller\ActionControlle
      */
     public function importAction($extensionKey)
     {
-        $this->flashMessage('### METHOD ### importAction()', '', FlashMessage::NOTICE);
-
         try {
 
             // Step 1: Prepare everything
@@ -294,10 +296,15 @@ class ImportController extends \TYPO3\CMS\Extbase\Mvc\Controller\ActionControlle
             $this->flashMessage('Importing data from temporary table into extension', '', FlashMessage::NOTICE);
             // TODO: implement filterRecords() (Flag for updating / not updating in import file etc.)
             // TODO: move import file to archive before further processing (if(settings->archive))
-            $this->flashMessage('### METHOD ### _importRecords()', '', FlashMessage::NOTICE);
+
             $hierarchy = $this->mappingUtility->getHierarchy($extensionKey);
             foreach ($records as $record) {
                 $this->_importRecords($extensionKey, $record, $hierarchy);
+            }
+
+            $this->flashMessage('Gathering import results', '', FlashMessage::NOTICE);
+            foreach ($this->objectUtility->getUpdatedObjectsCounter() as $counterClass => $counterSum) {
+                $this->addFlashMessage('Created / updated ' . $counterSum . ' objects of class ' . $counterClass);
             }
             $this->addFlashMessage('Done with import for extension key: ' . $extensionKey);
 

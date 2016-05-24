@@ -54,6 +54,8 @@ class Object
      */
     protected $parentRegistry = array();
 
+    protected $updatedObjectsCounter = array();
+
 
     /**
      * @param string $objectClass
@@ -173,6 +175,11 @@ class Object
         $repository = $this->objectManager->get($objectConf['repository']);
         $repository->update($object);
         $this->persistenceManager->persistAll();
+
+        if(!array_key_exists($objectClass,$this->updatedObjectsCounter)){
+            $this->updatedObjectsCounter[$objectClass] = 0;
+        }
+        ++$this->updatedObjectsCounter[$objectClass];
     }
 
     /**
@@ -203,6 +210,8 @@ class Object
      */
     public function addChildToParent($child, $childConf, $childRegistryLevel, $sysLanguage){
 
+        // TODO: Add option to exclude children (mm relations etc.) from translation / use l10n_mode etc. from TCA
+
         // First, try to get the parent for the $child.
         // If there is no parent, then we don't need to proceed
         // ----------------------------------------------------
@@ -227,7 +236,7 @@ class Object
         // -------------------------------------------------------------------------------
 
         if($childConf['parentAddImportChild']){
-            $parentObject->addImportChild($child,$childConf);
+            $parentObject->addImportChild($child,$childConf,$sysLanguage);
         }else{
             $methodName = 'add'.$childClassname;
             $parentObject->{$methodName}($child);
@@ -237,4 +246,9 @@ class Object
 
         return TRUE;
     }
+
+    public function getUpdatedObjectsCounter(){
+        return $this->updatedObjectsCounter;
+    }
+
 }
