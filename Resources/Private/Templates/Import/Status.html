@@ -3,14 +3,15 @@
 
     <div class="active-languages">
         <strong>Active languages</strong>:
-        <f:for each="{languages}" key="sysLanguage" as="languageSuffix" iteration="i"><f:if condition="{i.index} > 0">, </f:if><span class="active-language">{languageSuffix} ({sysLanguage})</span></f:for>
+        <f:for each="{languages}" key="sysLanguage" as="languageSuffix" iteration="i"><f:if condition="{i.index} > 0">, </f:if><span class="active-language">{languageSuffix}<f:if condition="{settings.verboseFlashMessages}">({sysLanguage})</f:if></span></f:for>
     </div>
 
     <table class="status-table">
         <thead>
         <tr>
             <th>Extension Key</th>
-            <th>Beschreibung</th>
+            <th>Description</th>
+            <th>Last execution date</th>
             <th></th>
         </tr>
         </thead>
@@ -19,9 +20,10 @@
             <tr>
                 <td>{extensionKey}</td>
                 <td>{import.title}</td>
+                <td>t.b.d</td>
                 <td>
-                    <f:link.action action="import" controller="Import" arguments="{extensionKey: extensionKey}">
-                        Import starten
+                    <f:link.action action="import" class="btn btn-default" controller="Import" arguments="{extensionKey: extensionKey}">
+                        Start import
                     </f:link.action>
                 </td>
             </tr>
