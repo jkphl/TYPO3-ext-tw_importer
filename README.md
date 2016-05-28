@@ -58,10 +58,36 @@ tbd
 * Repositories  must implement AbstractImportableRepository
 * Repositories must have **protected $_tablename**
 
-**If other import ID field than 'tx_twimporter_id'**
+**Special Case:  Other import ID field than 'tx_twimporter_id'**
 
 * Repositories must have **protected  $field_sku** set to table column name
-* Set 'importIdField' in hierarchy 
+* Set 'importIdField' in hierarchy
+
+**Special Case: Inline / IRRE Children, Value-Objects as Children etc.**
+
+*  Define value for **parentAddImportChild** inside the children hierarchy.
+*  Then, inside the parenet model, implement the **addImportChild(..)** function like this
+
+				
+		/**
+		 * @param \Tollwerk\TwImporter\Domain\Model\AbstractImportable $child
+		 * @param array $childConf
+		 * @param int $sysLanguage
+		 */
+		public function addImportChild($child, $childConf, $sysLanguage)
+		{
+	
+			// 'Employees' is the value you defined for "parentAddImportChild" inside the child hierarchy
+			if($childConf['parentAddImportChild'] == 'Employee'){
+				$GLOBALS['TYPO3_DB']->exec_UPDATEquery(
+					'tx_twimportertest_domain_model_employee',
+					'uid = '.$child->getUid(),
+					array(
+						'company' => $this->uid
+					)
+				);
+			}
+		}
 
 ### Fehlerquellen
 
@@ -97,4 +123,6 @@ Use this hook to register your own extension for import. You must set the extens
 
 * FlashMessage:NOTICE messages with step counter or something for better troubleshooting with help of this manual (e.g. "Error after Step 4? Could be wrong mapping")
 
-* Propper handling of value objects  
+* Propper handling of value objects
+
+* Multpiple children of same class / model on the same level. E.g University->Professors (Model: Person) **AND** University-Student (Model: Person) ! ! !   
