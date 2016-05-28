@@ -57,7 +57,16 @@ tbd
 * Models must have **protected $translationParent**
 * Repositories  must implement AbstractImportableRepository
 * Repositories must have **protected $_tablename**
-* 
+
+**If other import ID field than 'tx_twimporter_id'**
+
+* Repositories must have **protected  $field_sku** set to table column name
+* Set 'importIdField' in hierarchy 
+
+### Fehlerquellen
+
+* **SQL Error message in TYPO3 backend or empty import table** Mapping. Column names inside import .ods-file with whitespaces or special characters? (E.g."ä,ö,?,!" etc.)
+
 
 **Important:** Don't forget to clear all caches via the **install tool** after addding or changing stuff inside your ext_localconf.php!  
 
@@ -85,3 +94,7 @@ Use this hook to register your own extension for import. You must set the extens
 * Propper l10n_mode and language handling. Currently everything is treated like l10n_mode = "exclude"
 
 * Inline / IRRE objects vs. propper relation handling..
+
+* FlashMessage:NOTICE messages with step counter or something for better troubleshooting with help of this manual (e.g. "Error after Step 4? Could be wrong mapping")
+
+* Propper handling of value objects  

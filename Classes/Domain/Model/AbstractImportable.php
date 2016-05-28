@@ -94,6 +94,8 @@ abstract class AbstractImportable extends AbstractTranslatable {
 		$className							= get_class($this);
 		$languageSuffices					= \Tollwerk\TwImporter\Utility\SysLanguages::suffices();
 
+
+
 		// Run through each column configuration
 		foreach ($mapping as $column => $config) {
 
@@ -122,6 +124,7 @@ abstract class AbstractImportable extends AbstractTranslatable {
 						$columnConfig['collate']	= !!$columnConfig['collate'];
 					}
 				}
+
 
 				// Prepare the column value
 				$columnValue				= $this->_prepareValue(strval($data[$column]), $columnConfig);

@@ -121,6 +121,7 @@ class ImportController extends \TYPO3\CMS\Extbase\Mvc\Controller\ActionControlle
         $this->flashMessage('Reading import file according to mapping and insert records', '', FlashMessage::NOTICE);
         $skippedColumns = array();
         $rowsToImport = $this->fileUtility->processXMLFile($importFileAsXMLPath, $mapping, $skippedColumns);
+
         if (count($skippedColumns)) {
             foreach ($skippedColumns as $skippedColumn) {
                 $this->addFlashMessage('Skipped column: ' . $skippedColumn, '', FlashMessage::WARNING);
@@ -147,6 +148,8 @@ class ImportController extends \TYPO3\CMS\Extbase\Mvc\Controller\ActionControlle
      */
     protected function _importRecords($extensionKey, $record, $hierarchy, $registryLevel = 0)
     {
+
+
         $flashMessageSpacer = '';
         for ($i = 0; $i < $registryLevel; $i++) {
             $flashMessageSpacer .= '--- ';
@@ -156,7 +159,7 @@ class ImportController extends \TYPO3\CMS\Extbase\Mvc\Controller\ActionControlle
         $objectClass = key($hierarchy);
         $objectConf = $hierarchy[$objectClass];
         $importIdField = array_key_exists('importIdField',$objectConf) ? $objectConf['importIdField'] : 'tx_twimporter_id';
-
+        
         $importId = $record[$importIdField];
 
         // Check the field conditions for this hierarchy, skip if not ok
@@ -182,6 +185,7 @@ class ImportController extends \TYPO3\CMS\Extbase\Mvc\Controller\ActionControlle
 
                 // Call set or update properties of object
                 // ---------------------------------------
+
                 $object->import(
                     $record,
                     $this->mappingUtility->getMapping($extensionKey),
@@ -304,7 +308,7 @@ class ImportController extends \TYPO3\CMS\Extbase\Mvc\Controller\ActionControlle
                 $this->_importRecords($extensionKey, $record, $hierarchy);
             }
             
-            
+
 
             $this->flashMessage('Gathering import results', '', FlashMessage::NOTICE);
             foreach ($this->objectUtility->getUpdatedObjectsCounter() as $counterClass => $counterSum) {
