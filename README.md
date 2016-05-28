@@ -13,7 +13,27 @@ tbd
 
 * Valid array for the 'registeredImports' hook, see [Hooks > registeredImports](#hooks_registeredImports)
 
-* There must be a column named "tx\_twimporter\_id" for every model you wish to be importable in it's corresponding database table. So change your *ext_tables.sql* accordingly. 
+* There must be a column named "tx\_twimporter\_id" for every model you wish to be importable in it's corresponding database table. So change your *ext_tables.sql* accordingly. Alternatively you can change the mapping inside your *ext\_typoscript\_setup.txt*. Example:
+
+
+		config.tx_extbase.persistence.classes {
+			Tollwerk\TwRws\Domain\Model\Product {
+				mapping {
+					tableName = tx_twrws_domain_model_product
+					columns {
+
+						# SKU is the column name in YOUR database, so change it
+						sku.mapOnProperty = txTwimporterId
+						
+						# All this other columns are there by default if your models are defined to be translateble 
+						sys_language_uid.mapOnProperty = translationLanguage
+						l10n_parent.mapOnProperty = translationParent
+						hidden.mapOnProperty = hidden
+						deleted.mapOnProperty = deleted
+					}
+				}
+			}
+
 
 * All corresponding models must implement *\Tollwerk\TwImporter\Domain\Model\AbstractImportable*
 
@@ -29,6 +49,15 @@ tbd
 
 * For nested imports ('children' inside 'hierarchy' inside your ext_localconf.php) you must override the "addImportChild($object,$objectConf) defined in \Tollwerk\TwImporter\Domain\Model\AbstractImportable. Alternatively, the import will try to call the "add[YourChildModelClassname]" method on the parent object
 
+### Checklist
+* Import Folder and File
+* ext_localconf.php with valid hook / mapping / hierarchy
+* ext\_typoscript\_setup.txt with valid mapping
+* Models must implement AbstractImportable
+* Models must have **protected $translationParent**
+* Repositories  must implement AbstractImportableRepository
+* Repositories must have **protected $_tablename**
+* 
 
 **Important:** Don't forget to clear all caches via the **install tool** after addding or changing stuff inside your ext_localconf.php!  
 
