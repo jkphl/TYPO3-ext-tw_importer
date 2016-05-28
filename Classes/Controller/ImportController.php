@@ -175,12 +175,18 @@ class ImportController extends \TYPO3\CMS\Extbase\Mvc\Controller\ActionControlle
 
                 // Object creation
                 // ---------------
+
                 $objectFoundOrCreated = $this->objectUtility->createOrGet($hierarchy, $importId, $sysLanguage);
+
+
+
                 /**
                  * @var \Tollwerk\TwImporter\Domain\Model\AbstractImportable $object
                  */
                 $object = $objectFoundOrCreated['object'];
                 $objectStatus = $objectFoundOrCreated['status'];
+
+
 
 
                 // Call set or update properties of object
@@ -191,6 +197,9 @@ class ImportController extends \TYPO3\CMS\Extbase\Mvc\Controller\ActionControlle
                     $this->mappingUtility->getMapping($extensionKey),
                     $languageSuffice
                 );
+
+
+
                 $this->objectUtility->update($hierarchy, $object);
                 $this->persistenceManager->persistAll();
 
@@ -210,8 +219,8 @@ class ImportController extends \TYPO3\CMS\Extbase\Mvc\Controller\ActionControlle
 
         // Call _importRecords recursively for all children
         // ------------------------------------------------
-        foreach ($objectConf['children'] as $childObjectClass => $childObjectConf) {
-
+        foreach ($objectConf['children'] as $key => $childObjectConf) {
+            $childObjectClass = $childObjectConf['class'];
             $this->_importRecords($extensionKey, $record, array($childObjectClass => $childObjectConf), ($registryLevel + 1));
         }
 
