@@ -86,12 +86,41 @@ class Object
     }
 
     /**
+     * @param array $record
+     * @param array $objectConf
+     * @param int $registryLevel
+     * @param int $sysLanguage
+     */
+    public function getByParent($record,$objectConf,$registryLevel,$sysLanguage){
+
+
+
+        // First, try to find by parentFindChild-method if defined in hierarchy
+        if(array_key_exists('parentFindChild',$objectConf)){
+
+            $parentObject = $this->getParent($registryLevel, $sysLanguage);
+            $method = $objectConf['parentFindChild'];
+            if(method_exists($parentObject,$method)){
+                $parentChildObject = $parentObject->{$method}($record,$objectConf);
+                if($parentChildObject instanceof \Tollwerk\TwImporter\Domain\Model\AbstractImportable){
+                    return $parentChildObject;
+                }
+
+            }
+        }
+
+        return NULL;
+    }
+    
+
+    /**
      * @param array $hierarchy
      * @param int $importId
      * @param int $sysLanguage
+     * @param int $registryLevel
      * @return \Tollwerk\TwImporter\Domain\Model\AbstractImportable
      */
-    public function createOrGet($hierarchy, $importId, $sysLanguage)
+    public function createOrGet($hierarchy, $importId, $sysLanguage,$registryLevel)
     {
         $objectClass = key($hierarchy);
         $objectConf = $hierarchy[$objectClass];
@@ -202,6 +231,34 @@ class Object
     }
 
     /**
+     * @param int $childRegistryLevel
+     * @param int $sysLanguage
+     * @return null|AbstractImportable
+     */
+    public function getParent($childRegistryLevel, $sysLanguage){
+
+        // TODO: Add option to exclude children (mm relations etc.) from translation / use l10n_mode etc. from TCA
+
+        // First, try to get the parent for the $child.
+        // If there is no parent, then we don't need to proceed
+        // ----------------------------------------------------
+        $parentRegistryLevel = $childRegistryLevel-1;
+        if($parentRegistryLevel < 0 || $parentRegistryLevel >= count($this->parentRegistry[$sysLanguage])){
+            return NULL;
+        }
+
+        /**
+         * @var \Tollwerk\TwImporter\Domain\Model\AbstractImportable $parentObject
+         */
+        $parentObject = $this->parentRegistry[$sysLanguage][$parentRegistryLevel];
+        if(!($parentObject instanceof \Tollwerk\TwImporter\Domain\Model\AbstractImportable)){
+            return NULL;
+        }
+
+        return $parentObject;
+    }
+
+    /**
      * @param \Tollwerk\TwImporter\Domain\Model\AbstractImportable $child
      * @param array $childConf
      * @param int $childRegistryLevel
@@ -211,19 +268,11 @@ class Object
     public function addChildToParent($child, $childConf, $childRegistryLevel, $sysLanguage){
 
         // TODO: Add option to exclude children (mm relations etc.) from translation / use l10n_mode etc. from TCA
-
-        // First, try to get the parent for the $child.
-        // If there is no parent, then we don't need to proceed
-        // ----------------------------------------------------
-        $parentRegistryLevel = $childRegistryLevel-1;
-        if($parentRegistryLevel < 0 || $parentRegistryLevel >= count($this->parentRegistry[$sysLanguage])){
+        $parentObject = $this->getParent($childRegistryLevel, $sysLanguage);
+        if(!$parentObject){
             return FALSE;
         }
 
-        $parentObject = $this->parentRegistry[$sysLanguage][$parentRegistryLevel];
-        if(!($parentObject instanceof \Tollwerk\TwImporter\Domain\Model\AbstractImportable)){
-            return FALSE;
-        }
 
         // Get classnames for $parentObject and $child without their namespaces
         // --------------------------------------------------------------------

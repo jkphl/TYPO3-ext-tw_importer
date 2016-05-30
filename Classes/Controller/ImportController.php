@@ -158,14 +158,14 @@ class ImportController extends \TYPO3\CMS\Extbase\Mvc\Controller\ActionControlle
 
         $objectClass = key($hierarchy);
         $objectConf = $hierarchy[$objectClass];
-        $importIdField = array_key_exists('importIdField',$objectConf) ? $objectConf['importIdField'] : 'tx_twimporter_id';
-        
+        $importIdField = array_key_exists('importIdField', $objectConf) ? $objectConf['importIdField'] : 'tx_twimporter_id';
+
         $importId = $record[$importIdField];
 
         // Check the field conditions for this hierarchy, skip if not ok
         if (!$this->mappingUtility->checkHierarchyConditions($record, $objectConf)) {
             $this->flashMessage(
-                $importIdField.': '. $record[$importIdField] . ' | Field conditions do not fit for current class ' . $objectClass . ', moving on.. ',
+                $importIdField . ': ' . $record[$importIdField] . ' | Field conditions do not fit for current class ' . $objectClass . ', moving on.. ',
                 '',
                 FlashMessage::WARNING
             );
@@ -173,18 +173,26 @@ class ImportController extends \TYPO3\CMS\Extbase\Mvc\Controller\ActionControlle
 
             foreach ($this->languageSuffices as $sysLanguage => $languageSuffice) {
 
-                // Object creation
-                // ---------------
+ 
+               // Or createOrGet by parent or by importId
+                if(array_key_exists('parentFindChild',$objectConf)){
+                    $objectFoundByParent = $this->objectUtility->getByParent($record, $objectConf, $registryLevel,$sysLanguage);
+                    echo 'found by parent? '.gettype($objectFoundByParent).'<br />';
+                }
 
-                $objectFoundOrCreated = $this->objectUtility->createOrGet($hierarchy, $importId, $sysLanguage);
+                if($objectFoundByParent instanceof  \Tollwerk\TwImporter\Domain\Model\AbstractImportable){
+                    $object = $objectFoundByParent;
+                    $objectStatus = 'found by parent: uid: '.$object->getUid().' '.get_class($object);
+                }else{
+                    echo 'create or get<br />';
+                    $objectFoundOrCreated = $this->objectUtility->createOrGet($hierarchy, $importId, $sysLanguage,$registryLevel,$record);
+                    /**
+                     * @var \Tollwerk\TwImporter\Domain\Model\AbstractImportable $object
+                     */
+                    $object = $objectFoundOrCreated['object'];
+                    $objectStatus = $objectFoundOrCreated['status'];
+                }
 
-
-
-                /**
-                 * @var \Tollwerk\TwImporter\Domain\Model\AbstractImportable $object
-                 */
-                $object = $objectFoundOrCreated['object'];
-                $objectStatus = $objectFoundOrCreated['status'];
 
 
 
@@ -197,7 +205,6 @@ class ImportController extends \TYPO3\CMS\Extbase\Mvc\Controller\ActionControlle
                     $this->mappingUtility->getMapping($extensionKey),
                     $languageSuffice
                 );
-
 
 
                 $this->objectUtility->update($hierarchy, $object);
@@ -316,7 +323,6 @@ class ImportController extends \TYPO3\CMS\Extbase\Mvc\Controller\ActionControlle
             foreach ($records as $record) {
                 $this->_importRecords($extensionKey, $record, $hierarchy);
             }
-            
 
 
             $this->flashMessage('Gathering import results', '', FlashMessage::NOTICE);
