@@ -49,6 +49,8 @@ tbd
 
 * For nested imports ('children' inside 'hierarchy' inside your ext_localconf.php) you must override the "addImportChild($object,$objectConf) defined in \Tollwerk\TwImporter\Domain\Model\AbstractImportable. Alternatively, the import will try to call the "add[YourChildModelClassname]" method on the parent object
 
+* You can overwrite the **protected _prepareImport()** of models to clean up the database etc. before the actual import of the current object. Will be called for each import row / model.
+
 ### Checklist
 * Import Folder and File
 * ext_localconf.php with valid hook / mapping / hierarchy
