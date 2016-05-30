@@ -81,6 +81,19 @@ abstract class AbstractImportable extends AbstractTranslatable {
 	 * PUBLIC METHODS
 	 ***********************************************************************************************/
 
+
+	/**
+	 * Can be overwritten to clean up models / tables etc. before the actual import starts
+	 *
+	 * @param array $data
+	 * @param array $mapping
+	 * @param $suffix
+	 * @param array $extConfig
+	 */
+	public function prepareImport(array $data, array $mapping, $suffix, $extConfig = array()){
+		// TODO: parent->prepareImport should not be called for each child but just once for the parent itself..
+	}
+
 	/**
 	 * Set the values from import data
 	 * 
@@ -91,6 +104,7 @@ abstract class AbstractImportable extends AbstractTranslatable {
 	 * @return \boolean					Success
 	 */
 	public function import(array $data, array $mapping, $suffix, $extConfig = array()) {
+
 		$className							= get_class($this);
 		$languageSuffices					= \Tollwerk\TwImporter\Utility\SysLanguages::suffices();
 

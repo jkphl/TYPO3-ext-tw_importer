@@ -177,14 +177,12 @@ class ImportController extends \TYPO3\CMS\Extbase\Mvc\Controller\ActionControlle
                // Or createOrGet by parent or by importId
                 if(array_key_exists('parentFindChild',$objectConf)){
                     $objectFoundByParent = $this->objectUtility->getByParent($record, $objectConf, $registryLevel,$sysLanguage);
-                    echo 'found by parent? '.gettype($objectFoundByParent).'<br />';
                 }
 
                 if($objectFoundByParent instanceof  \Tollwerk\TwImporter\Domain\Model\AbstractImportable){
                     $object = $objectFoundByParent;
                     $objectStatus = 'found by parent: uid: '.$object->getUid().' '.get_class($object);
                 }else{
-                    echo 'create or get<br />';
                     $objectFoundOrCreated = $this->objectUtility->createOrGet($hierarchy, $importId, $sysLanguage,$registryLevel,$record);
                     /**
                      * @var \Tollwerk\TwImporter\Domain\Model\AbstractImportable $object
@@ -199,6 +197,13 @@ class ImportController extends \TYPO3\CMS\Extbase\Mvc\Controller\ActionControlle
 
                 // Call set or update properties of object
                 // ---------------------------------------
+                if($registryLevel == 0){
+                    $object->prepareImport(
+                        $record,
+                        $this->mappingUtility->getMapping($extensionKey),
+                        $suffix
+                    );
+                }
 
                 $object->import(
                     $record,
