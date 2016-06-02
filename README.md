@@ -128,3 +128,5 @@ Use this hook to register your own extension for import. You must set the extens
 * Propper handling of value objects
 
 * Multpiple children of same class / model on the same level. E.g University->Professors (Model: Person) **AND** University-Student (Model: Person) ! ! !   
+
+* Auswählen der gewünschten Import-Datei

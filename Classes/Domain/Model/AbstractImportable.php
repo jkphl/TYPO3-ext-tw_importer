@@ -100,15 +100,13 @@ abstract class AbstractImportable extends AbstractTranslatable {
 	 * @param \array $data				Import data
 	 * @param \array $mapping			Column mapping
 	 * @param \string $suffix			Language suffix
+	 * @param \array $languageSuffices		All language suffices
 	 * @param \array $extConfig			Additional configuration here
 	 * @return \boolean					Success
 	 */
-	public function import(array $data, array $mapping, $suffix, $extConfig = array()) {
+	public function import(array $data, array $mapping, $suffix, $languageSuffices, $extConfig = array()) {
 
 		$className							= get_class($this);
-		$languageSuffices					= \Tollwerk\TwImporter\Utility\SysLanguages::suffices();
-
-
 
 		// Run through each column configuration
 		foreach ($mapping as $column => $config) {
@@ -146,6 +144,7 @@ abstract class AbstractImportable extends AbstractTranslatable {
 
 				// Run through all columns and skip this one if it's for another language than the current
 				foreach ($languageSuffices as $languageSuffix) {
+
 					if (preg_match("%\_$languageSuffix$%", $column) && ($languageSuffix != $suffix)) {
 						// echo ' - Skipping '.GeneralUtility::underscoredToUpperCamelCase($columnConfig['column']).' --- '.$languageSuffix.' - '.$suffix.PHP_EOL.'<br />';
 						continue 2;
@@ -163,7 +162,6 @@ abstract class AbstractImportable extends AbstractTranslatable {
 					$columnOrigValue			= null;
 					$columnTranslated			= GeneralUtility::underscoredToUpperCamelCase($columnConfig['column']);
 				}
-
 
 				// If there's a special importer method
 				if (@is_callable(array($this, 'import'.$columnTranslated))) {

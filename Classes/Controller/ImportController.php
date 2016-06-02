@@ -192,9 +192,6 @@ class ImportController extends \TYPO3\CMS\Extbase\Mvc\Controller\ActionControlle
                 }
 
 
-
-
-
                 // Call set or update properties of object
                 // ---------------------------------------
                 if($registryLevel == 0){
@@ -208,24 +205,19 @@ class ImportController extends \TYPO3\CMS\Extbase\Mvc\Controller\ActionControlle
                 $object->import(
                     $record,
                     $this->mappingUtility->getMapping($extensionKey),
-                    $languageSuffice
+                    $languageSuffice,
+                    $this->languageSuffices
                 );
-
 
                 $this->objectUtility->update($hierarchy, $object);
                 $this->persistenceManager->persistAll();
-
-
                 $this->flashMessage($flashMessageSpacer . 'importId: ' . $importId . ' | language: ' . $languageSuffice . ' | object: ' . $objectClass . ' | uid: ' . $object->getUid() . ' | status: ' . $objectStatus);
-
 
                 // Add this object to the $parents array
                 // and try to add current object to a parent, if available
                 // ---------------------------------------------------
                 $this->objectUtility->addParentToRegistry($object, $registryLevel, $sysLanguage);
                 $this->objectUtility->addChildToParent($object, $objectConf, $registryLevel, $sysLanguage);
-
-
             }
         }
 
