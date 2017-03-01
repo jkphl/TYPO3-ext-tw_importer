@@ -20,7 +20,7 @@ if (TYPO3_MODE === 'BE') {
         array(
             'access' => 'user,group',
             'icon'   => 'EXT:' . $_EXTKEY . '/ext_icon.png',
-            'labels' => 'LLL:EXT:tw_importer/Resources/Private/Language/locallang_mod.xml:mlang_tabs_tab',
+            'labels' => 'LLL:EXT:' . $_EXTKEY . '/Resources/Private/Language/locallang_import.xlf',
         )
     );
 

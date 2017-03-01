@@ -171,13 +171,9 @@ class ImportController extends \TYPO3\CMS\Extbase\Mvc\Controller\ActionControlle
             );
         } else {
 
-
-
             foreach ($this->languageSuffices as $sysLanguage => $languageSuffice) {
 
-
-                $this->flashMessage('###### LANGUAGE: '.$sysLanguage.' #######');
-
+ 
                // Or createOrGet by parent or by importId
                 if(array_key_exists('parentFindChild',$objectConf)){
                     $objectFoundByParent = $this->objectUtility->getByParent($record, $objectConf, $registryLevel,$sysLanguage);
