@@ -1,11 +1,9 @@
 <?php
 
-namespace Tollwerk\TwImporter\Utility;
-
 /***************************************************************
  *  Copyright notice
  *
- *  (c) 2016 Klaus Fiedler <klaus@tollwerk.de>, tollwerk GmbH
+ *  (c) 2016 Joschi Kuphal <joschi@tollwerk.de>, tollwerk GmbH
  *
  *  All rights reserved
  *
@@ -26,40 +24,59 @@ namespace Tollwerk\TwImporter\Utility;
  *  This copyright notice MUST APPEAR in all copies of the script!
  ***************************************************************/
 
-use Tollwerk\TwImporter\Controller\ImportController;
-use \TYPO3\CMS\Core\Utility\GeneralUtility;
+namespace Tollwerk\TwImporter\Utility;
 
+/**
+ * Database utility
+ */
 class Database
 {
+    /**
+     * Create and return the temporary database table name for import
+     *
+     * @param string $extensionKey Extension key
+     * @return string Temporary table name
+     */
     public static function getTableName($extensionKey)
     {
-        return 'temp_import_' . $extensionKey;
+        return 'temp_import_'.$extensionKey;
     }
 
     /**
-     * @param string $extensionKey
-     * @param array $mapping
+     * Create a temporary import table
+     *
+     * @param string $extensionKey Extension key
+     * @param array $mapping Column mapping
      * @return string The name of the temporary table
-     * @throws \ErrorException
+     * @throws \ErrorException If the table cannot be created
      */
-    public function prepareTempImportTable($extensionKey, $mapping)
+    public function prepareTemporaryImportTable($extensionKey, $mapping)
     {
-
         // Preparing temporary database table
-        if (!$GLOBALS['TYPO3_DB']->sql_query('DROP TABLE IF EXISTS `' . self::getTableName($extensionKey) . '`')) {
+        if (!$GLOBALS['TYPO3_DB']->sql_query('DROP TABLE IF EXISTS `'.self::getTableName($extensionKey).'`')) {
             throw new \ErrorException('Couldn\'t prepare database (already exists)');
         }
-        if (!$GLOBALS['TYPO3_DB']->sql_query('CREATE TABLE `' . self::getTableName($extensionKey) . '` ( `' . implode('` TEXT NULL DEFAULT NULL, `', array_keys($mapping)) . '` TEXT NULL DEFAULT NULL) ENGINE = MyISAM')) {
+
+        // If the table cannot be created
+        if (!$GLOBALS['TYPO3_DB']->sql_query(
+            'CREATE TABLE `'.self::getTableName($extensionKey).'` ( `'.implode('` TEXT NULL DEFAULT NULL, `',
+                array_keys($mapping)).'` TEXT NULL DEFAULT NULL) ENGINE = MyISAM')
+        ) {
             throw new \ErrorException('Couldn\'t prepare database (cannot create table)');
         }
 
         return self::getTableName($extensionKey);
     }
 
-    public function insertRow($extensionKey, $row)
+    /**
+     * Insert a row into the temporary table
+     *
+     * @param string $extensionKey Extension key
+     * @param array $row Row data
+     * @return mixed
+     */
+    public function insertRow($extensionKey, array $row)
     {
         return $GLOBALS['TYPO3_DB']->exec_INSERTquery(self::getTableName($extensionKey), $row);
     }
-
-    
 }

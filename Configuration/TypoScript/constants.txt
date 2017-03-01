@@ -9,17 +9,15 @@ module.tx_twimporter {
     }
 
     settings {
-
         # cat=module.tx_twimport_import//10; type=boolean; label= Verbose flash messages
         verboseFlashMessages = 0
 
         languages {
-            # cat=module.tx_twimport_import//20; type=string; label= Default language suffix iso2
+            # cat=module.tx_twimport_import//20; type=string; label= Default language suffix (2-char ISO 639-1 code)
             defaultSuffix = en
 
             # cat=module.tx_twimport_import//20; type=string; label= Active none default languages
             translate =
         }
     }
-
 }

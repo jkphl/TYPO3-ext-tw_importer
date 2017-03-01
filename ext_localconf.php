@@ -1,7 +1,10 @@
 <?php
-if (!defined('TYPO3_MODE')) die ('Access denied.');
 
-//$TYPO3_CONF_VARS['EXTCONF']['tw_importer']['registeredImports']['tw_importer'] = array(
+if (!defined('TYPO3_MODE')) {
+    die ('Access denied.');
+}
+
+//$GLOBALS['TYPO3_CONF_VARS']['EXTCONF']['tw_importer']['registeredImports']['tw_importer'] = array(
 //    'title' => 'Test Import from tw_importer',
 //    'mapping' => array(
 //        'sku' => array(
@@ -27,7 +30,7 @@ if (!defined('TYPO3_MODE')) die ('Access denied.');
 
 
 //
-//$TYPO3_CONF_VARS['EXTCONF']['tw_importer']['registeredImports']['tw_importertest'] = array(
+//$GLOBALS['TYPO3_CONF_VARS']['EXTCONF']['tw_importer']['registeredImports']['tw_importertest'] = array(
 //    'title' => 'Company / Employee for tx_twimportertest',
 //
 //

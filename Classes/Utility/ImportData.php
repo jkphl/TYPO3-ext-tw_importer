@@ -1,7 +1,5 @@
 <?php
 
-namespace Tollwerk\TwImporter\Utility;
-
 /***************************************************************
  *  Copyright notice
  *
@@ -26,6 +24,7 @@ namespace Tollwerk\TwImporter\Utility;
  *  This copyright notice MUST APPEAR in all copies of the script!
  ***************************************************************/
 
+namespace Tollwerk\TwImporter\Utility;
 
 use \TYPO3\CMS\Core\Utility\GeneralUtility;
 

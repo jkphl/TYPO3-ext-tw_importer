@@ -1,10 +1,7 @@
-
 # PUT THIS IN YOUR OWN ext_typoscript_setup.txt FILE AND
 # REPLACE THE MODEL-NAME AND THE TABLE-NAME WITH YOUR OWN
 #
 #config.tx_extbase.persistence.classes {
-#
-#
 #	Tollwerk\TwImporter\Domain\Model\AbstractImportable {
 #		mapping {
 #			tableName = tx_twimportertest_domain_model_company

@@ -1,11 +1,9 @@
 <?php
 
-namespace Tollwerk\TwImporter\Utility;
-
 /***************************************************************
  *  Copyright notice
  *
- *  (c) 2016 Klaus Fiedler <klaus@tollwerk.de>, tollwerk GmbH
+ *  (c) 2016 Joschi Kuphal <joschi@tollwerk.de>, tollwerk GmbH
  *
  *  All rights reserved
  *
@@ -26,45 +24,33 @@ namespace Tollwerk\TwImporter\Utility;
  *  This copyright notice MUST APPEAR in all copies of the script!
  ***************************************************************/
 
-use \TYPO3\CMS\Core\Utility\GeneralUtility;
+namespace Tollwerk\TwImporter\Utility\File;
 
-class File
+use Tollwerk\TwImporter\Utility\Database;
+use Tollwerk\TwImporter\Utility\File\AbstractFile;
+
+/**
+ * Open Document Format file
+ */
+class OpenDocumentFormatFile extends AbstractFile
 {
     /**
-     * Expand and validate a directory path
+     * Return the import file path
      *
-     * @param \string $directory Directory path
-     * @throws \InvalidArgumentException    When the given path is not a valid directory
-     * @return \string                        Expanded and validated (absolute) directory path
-     */
-    public function validateDirectory($directory)
-    {
-        $directory = trim(trim($directory, DIRECTORY_SEPARATOR));
-        if (!strlen($directory)) {
-            throw new \InvalidArgumentException('Empty directory name is not allowed');
-        }
-        $directory = GeneralUtility::getFileAbsFileName($directory);
-        if (!@is_dir($directory)) {
-            throw new \InvalidArgumentException(sprintf('Invalid directory "%s" (does not exist)', $directory));
-        }
-        if (!@is_writable($directory)) {
-            throw new \InvalidArgumentException(sprintf('Invalid directory "%s" (is not writable)', $directory));
-        }
-        return $directory;
-    }
-
-    /**
      * Reads the first usable .ods file inside the import $directory,
      * creates a temporary XML file and returns the corresponding path
      *
-     * @param $directory
-     * @return bool|null|string
-     * @throws \ErrorException
+     * @param string $directory Import directory
+     * @return string Import file path
+     * @throws \ErrorException If there's no suitable file in the directory
+     * @throws \ErrorException If the import file is invalid
      */
     public function getImportFile($directory)
     {
         // Get all available .ods files in the $directory
         $importFiles = glob($directory.DIRECTORY_SEPARATOR.'*.ods');
+
+        // If there's no suitable file in the directory
         if (!count($importFiles)) {
             throw new \ErrorException('No import file available. Quitting');
         }
@@ -74,6 +60,7 @@ class File
         // TODO: Include loop for skipping invalid files, see \TwBlog\Command\ImportCommandController, line 345 (foreach($impoartFiles as $importFile)
         $dataXMLFile = $this->_processODSFile($importFile);
 
+        // If the import file is invalid
         if (!$dataXMLFile) {
             throw new \ErrorException('The found import file '.$importFile.' could not be parsed to XML.');
         }
@@ -82,13 +69,16 @@ class File
     }
 
     /**
-     * @param string $filePath
-     * @param array $mapping
-     * @param array $skippedColumns If you want to know which columns where skipped because they are not mapped, use this array (will be called by reference!)
+     * Process the import file
      *
-     * return $array
+     * @param string $extensionKey Extension key
+     * @param string $filePath File path
+     * @param array $mapping Column mapping
+     * @param Database $database Database utility
+     * @param array $skippedColumns Skipped columns (set by reference)
+     * @return int Number of imported records
      */
-    public function processXMLFile($filePath, $mapping, &$skippedColumns = array())
+    public function processFile($extensionKey, $filePath, $mapping, Database $database, &$skippedColumns = [])
     {
         $columnHeaders = null;
         $document = new \DOMDocument;
@@ -97,7 +87,7 @@ class File
         $xpath->registerNamespace('text', 'urn:oasis:names:tc:opendocument:xmlns:text:1.0');
         $reader = new \XMLReader();
         $reader->open($filePath);
-        $rowsToImport = array();
+        $rowCount = 0;
 
         // Skip all non-rows
         while ($reader->read() && ($reader->name !== 'table:table-row')) {
@@ -111,7 +101,7 @@ class File
 
                 // If this is the header row
                 if ($columnHeaders === null) {
-                    $columnHeaders = array();
+                    $columnHeaders = [];
                     foreach ($columns as $columnIndex => $columnName) {
                         if (array_key_exists($columnName, $mapping)) {
                             $columnHeaders[$columnIndex] = $columnName;
@@ -136,9 +126,8 @@ class File
                     }
 
                     // Exclude empty rows
-                    if (strlen(trim(implode('', $record)))) {
-                        $rowsToImport[] = $record;
-                        // $insertedRows += (!!$GLOBALS['TYPO3_DB']->exec_INSERTquery('temp_import_blog', $record) * 1);
+                    if (strlen(trim(implode('', $record))) && $database->insertRow($extensionKey, $record)) {
+                        ++$rowCount;
                     }
                 }
             }
@@ -146,8 +135,7 @@ class File
             $reader->next('table-row');
         }
 
-        return $rowsToImport;
-
+        return $rowCount;
     }
 
     /**
@@ -159,8 +147,7 @@ class File
     protected function _processODSFile($file)
     {
         if (@filesize($file) && ($zip = new \ZipArchive()) && ($zip->open($file) === true) && strlen($data = $zip->getFromName('content.xml'))) {
-            $this->_tmpFiles[] =
-            $tmpfile = tempnam(sys_get_temp_dir(), 'blog_');
+            $this->_tmpFiles[] = $tmpfile = tempnam(sys_get_temp_dir(), 'blog_');
             return file_put_contents($tmpfile, $data) ? $tmpfile : false;
         } else {
             return null;
@@ -176,12 +163,12 @@ class File
      */
     protected function _importXMLRow(\DOMElement $row, \DOMXPath $xpath)
     {
-        $cells = array();
+        $cells = [];
         $columnIndex = 0;
 
         // Run through all cells
         foreach ($xpath->query('table:table-cell', $row) as $cell) {
-            $cellValue = array();
+            $cellValue = [];
             foreach ($xpath->query('text:p', $cell) as $paragraph) {
                 $cellValue[] = $paragraph->textContent;
             }

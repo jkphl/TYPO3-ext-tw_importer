@@ -12,25 +12,23 @@
 
 $EM_CONF[$_EXTKEY] = array(
     'title' => 'tollwerk Importer',
-    'description' => 'New and shiny ..',
+    'description' => 'General purpose mass importer module',
     'category' => 'plugin',
     'author' => '',
     'author_email' => '',
-    'state' => 'alpha',
+    'state' => 'beta',
     'internal' => '',
     'uploadfolder' => '0',
-    'createDirs' => '',
+    'createDirs' => 'fileadmin/user_upload/import',
     'clearCacheOnLoad' => 0,
     'version' => '',
     'constraints' => array(
         'depends' => array(
-            'typo3' => '7.1.0-7.1.99',
+            'typo3' => '8.0.0-8.99.99',
             'extbase' => '1.0.0-0.0.0',
             'fluid' => '1.0.0-0.0.0',
         ),
-        'conflicts' => array(
-        ),
-        'suggests' => array(
-        ),
+        'conflicts' => array(),
+        'suggests' => array(),
     ),
 );

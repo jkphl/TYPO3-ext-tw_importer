@@ -1,35 +1,68 @@
 <f:layout name="Module"/>
+
 <f:section name="Main">
+    <f:if condition="{languages}">
+        <f:then>
+            <section class="active-languages">
+                <h2>
+                    <f:translate
+                        key="LLL:EXT:tw_importer/Resources/Private/Language/locallang_mod.xlf:mod.header.languages"/>
+                </h2>
+                <ul>
+                    <f:for each="{languages}" key="sysLanguage" as="languageSuffix" iteration="i">
+                        <li><span class="active-language">{languageSuffix}<f:if
+                            condition="{settings.verboseFlashMessages}"> ({sysLanguage})</f:if></span></li>
+                    </f:for>
+                </ul>
+            </section>
 
-    <div class="active-languages">
-        <strong>Active languages</strong>:
-        <f:for each="{languages}" key="sysLanguage" as="languageSuffix" iteration="i"><f:if condition="{i.index} > 0">, </f:if><span class="active-language">{languageSuffix}<f:if condition="{settings.verboseFlashMessages}">({sysLanguage})</f:if></span></f:for>
-    </div>
-
-    <table class="status-table">
-        <thead>
-        <tr>
-            <th>Extension Key</th>
-            <th>Description</th>
-            <th>Last execution date</th>
-            <th></th>
-        </tr>
-        </thead>
-        <tbody>
-        <f:for each="{registeredImports}" as="import" key="extensionKey">
-            <tr>
-                <td>{extensionKey}</td>
-                <td>{import.title}</td>
-                <td>t.b.d</td>
-                <td>
-                    <f:link.action action="import" class="btn btn-default" controller="Import" arguments="{extensionKey: extensionKey}">
-                        Start import
-                    </f:link.action>
-                </td>
-            </tr>
-        </f:for>
-        </tbody>
-    </table>
-
-
+            <section>
+                <h2>
+                    <f:translate
+                        key="LLL:EXT:tw_importer/Resources/Private/Language/locallang_mod.xlf:mod.header.configs"/>
+                </h2>
+                <table class="status-table">
+                    <thead>
+                        <tr>
+                            <th>
+                                <f:translate
+                                    key="LLL:EXT:tw_importer/Resources/Private/Language/locallang_mod.xlf:mod.columns.extkey"/>
+                            </th>
+                            <th>
+                                <f:translate
+                                    key="LLL:EXT:tw_importer/Resources/Private/Language/locallang_mod.xlf:mod.columns.description"/>
+                            </th>
+                            <th>
+                                <f:translate
+                                    key="LLL:EXT:tw_importer/Resources/Private/Language/locallang_mod.xlf:mod.columns.lastexec"/>
+                            </th>
+                            <th></th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <f:for each="{registeredImports}" as="import" key="extensionKey">
+                            <tr>
+                                <td>{extensionKey}</td>
+                                <td>{import.title}</td>
+                                <td>TBD</td>
+                                <td>
+                                    <f:link.action action="import" class="btn btn-default" controller="Import"
+                                                   arguments="{extensionKey: extensionKey}">
+                                        <f:translate
+                                            key="LLL:EXT:tw_importer/Resources/Private/Language/locallang_mod.xlf:mod.buttons.import"/>
+                                    </f:link.action>
+                                </td>
+                            </tr>
+                        </f:for>
+                    </tbody>
+                </table>
+            </section>
+        </f:then>
+        <f:else>
+            <p>
+                <f:translate
+                    key="LLL:EXT:tw_importer/Resources/Private/Language/locallang_mod.xlf:mod.settings"/>
+            </p>
+        </f:else>
+    </f:if>
 </f:section>

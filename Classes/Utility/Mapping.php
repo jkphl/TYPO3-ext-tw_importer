@@ -1,11 +1,9 @@
 <?php
 
-namespace Tollwerk\TwImporter\Utility;
-
 /***************************************************************
  *  Copyright notice
  *
- *  (c) 2016 Klaus Fiedler <klaus@tollwerk.de>, tollwerk GmbH
+ *  (c) 2016 Joschi Kuphal <joschi@tollwerk.de>, tollwerk GmbH
  *
  *  All rights reserved
  *
@@ -26,24 +24,55 @@ namespace Tollwerk\TwImporter\Utility;
  *  This copyright notice MUST APPEAR in all copies of the script!
  ***************************************************************/
 
-use Tollwerk\TwImporter\Controller\ImportController;
-use \TYPO3\CMS\Core\Utility\GeneralUtility;
+namespace Tollwerk\TwImporter\Utility;
 
+/**
+ * Mapping utility
+ *
+ * @todo Invalid checks: accessing non-existing array keys doesn't throw an exception
+ */
 class Mapping
 {
     /**
-     * @param string $extensionKey
-     * @return array
-     * @throws \ErrorException
+     * Return the file adapter for a particular extension
+     *
+     * @param string $extensionKey Extension key
+     * @return string File adapter
+     * @throws \ErrorException If the mapping doesn't exist
+     * @throws \ErrorException If the mapping is empty
      */
-    public function getMapping($extensionKey){
-        try{
+    public function getAdapter($extensionKey)
+    {
+        try {
+            $adapter = $GLOBALS['TYPO3_CONF_VARS']['EXTCONF']['tw_importer']['registeredImports'][$extensionKey]['adapter'];
+        } catch (\Exception $ex) {
+            throw new \ErrorException("Could not get file adapter. Check \$GLOBALS['TYPO3_CONF_VARS']['EXTCONF']['tw_importer']['registeredImports']['".$extensionKey."']['adapter'] in your ext_localconf.php");
+        }
+
+        if (!strlen($adapter)) {
+            throw new \ErrorException("The file adapter is empty! Check \$GLOBALS['TYPO3_CONF_VARS']['EXTCONF']['tw_importer']['registeredImports']['".$extensionKey."']['adapter'] in your ext_localconf.php");
+        }
+
+        return $adapter;
+    }
+
+    /**
+     * Return the mapping for a particular extension
+     *
+     * @param string $extensionKey Extension key
+     * @return array Mapping
+     * @throws \ErrorException If the mapping doesn't exist
+     * @throws \ErrorException If the mapping is empty
+     */
+    public function getMapping($extensionKey)
+    {
+        try {
             $mapping = $GLOBALS['TYPO3_CONF_VARS']['EXTCONF']['tw_importer']['registeredImports'][$extensionKey]['mapping'];
-        }catch(\Exception $ex){
+        } catch (\Exception $ex) {
             throw new \ErrorException("Could not get mapping. Check \$GLOBALS['TYPO3_CONF_VARS']['EXTCONF']['tw_importer']['registeredImports']['".$extensionKey."']['mapping'] in your ext_localconf.php");
         }
 
-        if(!count($mapping)){
+        if (!count($mapping)) {
             throw new \ErrorException("The mapping is empty! Check \$GLOBALS['TYPO3_CONF_VARS']['EXTCONF']['tw_importer']['registeredImports']['".$extensionKey."']['mapping'] in your ext_localconf.php");
         }
 
@@ -51,18 +80,22 @@ class Mapping
     }
 
     /**
-     * @param string $extensionKey
-     * @return array
-     * @throws \ErrorException
+     * Return the mapping hierarchy
+     *
+     * @param string $extensionKey Extension key
+     * @return array Mapping hierarchy
+     * @throws \ErrorException If the mapping hierarchy doesn't exist
+     * @throws \ErrorException If the mapping hierarchy is empty
      */
-    public function getHierarchy($extensionKey){
-        try{
+    public function getHierarchy($extensionKey)
+    {
+        try {
             $hierarchy = $GLOBALS['TYPO3_CONF_VARS']['EXTCONF']['tw_importer']['registeredImports'][$extensionKey]['hierarchy'];
-        }catch(\Exception $ex){
+        } catch (\Exception $ex) {
             throw new \ErrorException("Could not get hierarchy. Check \$GLOBALS['TYPO3_CONF_VARS']['EXTCONF']['tw_importer']['registeredImports']['".$extensionKey."']['hierarchy'] in your ext_localconf.php");
         }
 
-        if(!count($hierarchy)){
+        if (!count($hierarchy)) {
             throw new \ErrorException("The hierarchy is empty! Check \$GLOBALS['TYPO3_CONF_VARS']['EXTCONF']['tw_importer']['registeredImports']['".$extensionKey."']['hierarchy'] in your ext_localconf.php");
         }
 
@@ -70,33 +103,35 @@ class Mapping
     }
 
     /**
-     * @param array $record
-     * @param array $objectConf
-     * @return bool
+     * Check the hierarchy conditions
+     *
+     * @param array $record Record
+     * @param array $objectConf Object configuration
+     * @return boolean Success
      */
-    public function checkHierarchyConditions($record,$objectConf){
-
+    public function checkHierarchyConditions($record, $objectConf)
+    {
         $mustBeSet = $objectConf['conditions']['mustBeSet'];
         $mustBeEmpty = $objectConf['conditions']['mustBeEmpty'];
 
         // Check all fields that must be set
-        if(is_array($mustBeSet) && count($mustBeSet)){
-            foreach($mustBeSet as $key => $fieldname){
-                if(empty($record[$fieldname])){
-                    return FALSE;
+        if (is_array($mustBeSet) && count($mustBeSet)) {
+            foreach ($mustBeSet as $key => $fieldname) {
+                if (empty($record[$fieldname])) {
+                    return false;
                 }
             }
         }
-        
+
         // Check all fields that must be empty
-        if(is_array($mustBeEmpty) && count($mustBeEmpty)){
-            foreach($mustBeEmpty as $key => $fieldname){
-                if(!empty($record[$fieldname])){
-                    return FALSE;
+        if (is_array($mustBeEmpty) && count($mustBeEmpty)) {
+            foreach ($mustBeEmpty as $key => $fieldname) {
+                if (!empty($record[$fieldname])) {
+                    return false;
                 }
             }
         }
-        
-        return TRUE;
+
+        return true;
     }
 }

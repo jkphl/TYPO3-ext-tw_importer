@@ -1,13 +1,9 @@
 <?php
-namespace Tollwerk\TwImporter\Domain\Repository;
-
 
 /***************************************************************
- *
  *  Copyright notice
  *
- *  (c) 2015 Joschi <joschi@tollwerk.de>, tollwerk GmbH
- *           Klaus Fiedler <klaus@tollwerk.de>, tollwerk GmbH
+ *  (c) 2016 Joschi Kuphal <joschi@tollwerk.de>, tollwerk GmbH
  *
  *  All rights reserved
  *
@@ -28,28 +24,25 @@ namespace Tollwerk\TwImporter\Domain\Repository;
  *  This copyright notice MUST APPEAR in all copies of the script!
  ***************************************************************/
 
+namespace Tollwerk\TwImporter\Utility\FileAdapter;
+
 /**
- * Abstract repository for translatable records
+ * File adapter interface
  */
-abstract class AbstractEnhancedRepository extends \TYPO3\CMS\Extbase\Persistence\Repository {
+interface FileAdapterInterface
+{
+    /**
+     * Return the adapter name
+     *
+     * @return string Adapter name
+     */
+    public static function getName();
 
     /**
-     * Find multiple records by identifier
-     * 
-     * @param \array $uids          List of identifiers
-     * @return \array               Matching records
+     * Import a file
+     *
+     * @param string $extensionKey Extension key
+     * @return int Number of imported records
      */
-	public function findByUids(array $uids) {
-	    $uids = array_map('intval', array_filter($uids));
-	    if (!count($uids)) {
-	        return array();
-	    }
-
-		$query = $this->createQuery();
-		$query->getQuerySettings()->setRespectSysLanguage(false);
-		$query->matching($query->in('uid', $uids));
-
-		return $query->execute();
-	}
-
+    public function import($extensionKey);
 }

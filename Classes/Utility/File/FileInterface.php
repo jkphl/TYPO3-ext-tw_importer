@@ -1,13 +1,9 @@
 <?php
-namespace Tollwerk\TwImporter\Domain\Repository;
-
 
 /***************************************************************
- *
  *  Copyright notice
  *
- *  (c) 2015 Joschi <joschi@tollwerk.de>, tollwerk GmbH
- *           Klaus Fiedler <klaus@tollwerk.de>, tollwerk GmbH
+ *  (c) 2016 Joschi Kuphal <joschi@tollwerk.de>, tollwerk GmbH
  *
  *  All rights reserved
  *
@@ -28,28 +24,32 @@ namespace Tollwerk\TwImporter\Domain\Repository;
  *  This copyright notice MUST APPEAR in all copies of the script!
  ***************************************************************/
 
+namespace Tollwerk\TwImporter\Utility\File;
+
+use Tollwerk\TwImporter\Utility\Database;
+
 /**
- * Abstract repository for translatable records
+ * File interface
  */
-abstract class AbstractEnhancedRepository extends \TYPO3\CMS\Extbase\Persistence\Repository {
+interface FileInterface
+{
+    /**
+     * Return the import file path
+     *
+     * @param string $directory Import directory
+     * @return string Import file path
+     */
+    public function getImportFile($directory);
 
     /**
-     * Find multiple records by identifier
-     * 
-     * @param \array $uids          List of identifiers
-     * @return \array               Matching records
+     * Process the import file
+     *
+     * @param string $extensionKey Extension key
+     * @param string $filePath File path
+     * @param array $mapping Column mapping
+     * @param Database $database Database utility
+     * @param array $skippedColumns Skipped columns (set by reference)
+     * @return int Number of imported records
      */
-	public function findByUids(array $uids) {
-	    $uids = array_map('intval', array_filter($uids));
-	    if (!count($uids)) {
-	        return array();
-	    }
-
-		$query = $this->createQuery();
-		$query->getQuerySettings()->setRespectSysLanguage(false);
-		$query->matching($query->in('uid', $uids));
-
-		return $query->execute();
-	}
-
+    public function processFile($extensionKey, $filePath, $mapping, Database $database, &$skippedColumns = []);
 }

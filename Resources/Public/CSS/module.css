@@ -3,9 +3,8 @@
     text-align: left;
 }
 
-
 .status-table tr > * {
-    padding: 1em;
+    padding: .5em 1em;
 }
 
 .status-table th {
@@ -13,8 +12,5 @@
 }
 
 .status-table tr:nth-child(odd) td {
-    background-color: rgba(0,0,0,.1);
+    background-color: rgba(0, 0, 0, .1);
 }
-
-
-

@@ -7,9 +7,9 @@ tbd
 ### Requirements
 
 
-* Folder with readable .ods file inside *fileadmin/user_upload/tw_importer/*. Example: *fileadmin/user_upload/tw_importer/yourextensionkey/import_me.ods*
+* Folder with readable import file (e.g. `.ods` file) inside `fileadmin/user_upload/import/`. Example: `fileadmin/user_upload/import/yourextensionkey/import_me.ods`
 
-* ext_localconf.php inside your extension directory registering the extension via *$TYPO3_CONF_VARS['EXTCONF']['tw_importer']['registeredImports']['yourextensionkey']*
+* `ext_localconf.php` inside your extension directory registering the extension via `$GLOBALS['TYPO3_CONF_VARS']['EXTCONF']['import']['registeredImports']['yourextensionkey']`
 
 * Valid array for the 'registeredImports' hook, see [Hooks > registeredImports](#hooks_registeredImports)
 
@@ -70,7 +70,7 @@ tbd
 *  Define value for **parentAddImportChild** inside the children hierarchy.
 *  Then, inside the parenet model, implement the **addImportChild(..)** function like this
 
-				
+
 		/**
 		 * @param \Tollwerk\TwImporter\Domain\Model\AbstractImportable $child
 		 * @param array $childConf
@@ -96,21 +96,21 @@ tbd
 * **SQL Error message in TYPO3 backend or empty import table** Mapping. Column names inside import .ods-file with whitespaces or special characters? (E.g."ä,ö,?,!" etc.)
 
 
-**Important:** Don't forget to clear all caches via the **install tool** after addding or changing stuff inside your ext_localconf.php!  
+**Important:** Don't forget to clear all caches via the **install tool** after addding or changing stuff inside your ext_localconf.php!
 
 ## Hooks
 
 Register for tw\_importer hooks for inside the following global array. The last "[ ]" can be empty or must be filled with an array key / index of your choice, depending on the hook.
- 
-      $TYPO3_CONF_VARS['EXTCONF']['tw_importer']['HOOK NAME'][] = YOUR VALUES OR CLASSES
 
-**Important:** Don't forget to clear all caches via the **install tool** after registering or changing hooks!   
+      $GLOBALS['TYPO3_CONF_VARS']['EXTCONF']['tw_importer']['HOOK NAME'][] = YOUR VALUES OR CLASSES
+
+**Important:** Don't forget to clear all caches via the **install tool** after registering or changing hooks!
 
 <a name="hooks_registeredImports"></a>
 ### registeredImports
 Use this hook to register your own extension for import. You must set the extension key of your extenion as index for the array. Example:
 
-    $TYPO3_CONF_VARS['EXTCONF']['tw_importer']['registeredImports']['tx_news'] = array(
+    $GLOBALS['TYPO3_CONF_VARS']['EXTCONF']['tw_importer']['registeredImports']['tx_news'] = array(
 		'title' => 'News Extensios, baby!',
 		'mapping' => array(
 			// see "mapping" in this manual..
@@ -127,6 +127,6 @@ Use this hook to register your own extension for import. You must set the extens
 
 * Propper handling of value objects
 
-* Multpiple children of same class / model on the same level. E.g University->Professors (Model: Person) **AND** University-Student (Model: Person) ! ! !   
+* Multpiple children of same class / model on the same level. E.g University->Professors (Model: Person) **AND** University-Student (Model: Person) ! ! !
 
 * Auswählen der gewünschten Import-Datei
