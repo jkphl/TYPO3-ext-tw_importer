@@ -28,74 +28,79 @@ namespace Tollwerk\TwImporter\Domain\Repository;
  *  This copyright notice MUST APPEAR in all copies of the script!
  ***************************************************************/
 
+use Tollwerk\TwImporter\Domain\Model\AbstractTranslatable;
+
 /**
  * Abstract repository for translatable records
  */
-abstract class AbstractTranslatableRepository extends AbstractEnhancedRepository {
-	
-	/**
-	 * Table name
-	 *
-	 * @var \string
-	 */
-	protected $_tablename = null;
+abstract class AbstractTranslatableRepository extends AbstractEnhancedRepository
+{
 
-	/**
-	 * Find an object by language and its translation parent
-	 *
-	 * @param \TYPO3\CMS\Extbase\DomainObject\AbstractEntity $parent	Parent object
-	 * @param \int $sysLanguage          								System language
-	 * @return \TYPO3\CMS\Extbase\DomainObject\AbstractEntity			Translated object
-	 */
-	public function findOneByTranslationParent(\TYPO3\CMS\Extbase\DomainObject\AbstractEntity $parent, $sysLanguage = 0) {
+    /**
+     * Table name
+     *
+     * @var \string
+     */
+    protected $_tablename = null;
 
-		if ($this->_tablename === null) {
-			throw new \ErrorException('$this->_tablename is NULL! Please set "protected $_tablename = \'tx_yourextensionkey_domain_model_yourmodelclassname\';" in '.get_class($this));
-		}
-		
-		$languageField = $GLOBALS['TCA'][$this->_tablename]['ctrl']['languageField'];
-		$GLOBALS['TCA'][$this->_tablename]['ctrl']['languageField'] = null;
-		$query			= $this->createQuery();
-		$query->getQuerySettings()->setRespectStoragePage(FALSE);
-		$query->getQuerySettings()->setIgnoreEnableFields(TRUE);
-		$query->getQuerySettings()->setIncludeDeleted(TRUE);
-		$query->matching(
-			$query->logicalAnd(
-				$query->equals('pid', $parent->getPid()),
-				$query->equals('translationParent', $parent->getUid()),
-				$query->equals('translationLanguage', $sysLanguage)
-			)
-		);
-		$result			= $query->execute()->getFirst();
+    /**
+     * Find an object by language and its translation parent
+     *
+     * @param \TYPO3\CMS\Extbase\DomainObject\AbstractEntity $parent Parent object
+     * @param \int $sysLanguage System language
+     * @return \TYPO3\CMS\Extbase\DomainObject\AbstractEntity            Translated object
+     */
+    public function findOneByTranslationParent(\TYPO3\CMS\Extbase\DomainObject\AbstractEntity $parent, $sysLanguage = 0)
+    {
 
-		$GLOBALS['TCA'][$this->_tablename]['ctrl']['languageField'] = $languageField;
-		return $result;
-	}
+        if ($this->_tablename === null) {
+            throw new \ErrorException('$this->_tablename is NULL! Please set "protected $_tablename = \'tx_yourextensionkey_domain_model_yourmodelclassname\';" in '.get_class($this));
+        }
 
-	/**
-	 * @param \Tollwerk\TwImporter\Domain\Model\AbstractTranslatable $object
-	 * @throws \TYPO3\CMS\Extbase\Persistence\Exception\IllegalObjectTypeException
-	 */
-	public function add($object){
-		$languageField = $GLOBALS['TCA'][$this->_tablename]['ctrl']['languageField'];
-		$GLOBALS['TCA'][$this->_tablename]['ctrl']['languageField'] = null;
-			parent::add($object);
-		$GLOBALS['TCA'][$this->_tablename]['ctrl']['languageField'] = $languageField;
-	}
+        $languageField = $GLOBALS['TCA'][$this->_tablename]['ctrl']['languageField'];
+        $GLOBALS['TCA'][$this->_tablename]['ctrl']['languageField'] = null;
+        $query = $this->createQuery();
+        $query->getQuerySettings()->setRespectStoragePage(false);
+        $query->getQuerySettings()->setIgnoreEnableFields(true);
+        $query->getQuerySettings()->setIncludeDeleted(true);
+        $query->matching(
+            $query->logicalAnd(
+                $query->equals('pid', $parent->getPid()),
+                $query->equals('translationParent', $parent->getUid()),
+                $query->equals('translationLanguage', $sysLanguage)
+            )
+        );
+        $result = $query->execute()->getFirst();
 
-	/**
-	 * Replaces an existing object with the same identifier by the given object
-	 *
-	 * @param object $modifiedObject The modified object
-	 * @throws \TYPO3\CMS\Extbase\Persistence\Exception\UnknownObjectException
-	 * @throws \TYPO3\CMS\Extbase\Persistence\Exception\IllegalObjectTypeException
-	 * @return void
-	 * @api
-	 */
-	public function update($modifiedObject){
-		$languageField = $GLOBALS['TCA'][$this->_tablename]['ctrl']['languageField'];
-		$GLOBALS['TCA'][$this->_tablename]['ctrl']['languageField'] = null;
-			parent::update($modifiedObject);
-		$GLOBALS['TCA'][$this->_tablename]['ctrl']['languageField'] = $languageField;
-	}
+        $GLOBALS['TCA'][$this->_tablename]['ctrl']['languageField'] = $languageField;
+        return $result;
+    }
+
+    /**
+     * Adds an object to this repository
+     *
+     * @param AbstractTranslatable $object
+     * @return void
+     */
+    public function add($object)
+    {
+        $languageField = $GLOBALS['TCA'][$this->_tablename]['ctrl']['languageField'];
+        $GLOBALS['TCA'][$this->_tablename]['ctrl']['languageField'] = null;
+        parent::add($object);
+        $GLOBALS['TCA'][$this->_tablename]['ctrl']['languageField'] = $languageField;
+    }
+
+    /**
+     * Replaces an existing object with the same identifier by the given object
+     *
+     * @param AbstractTranslatable $modifiedObject The modified object
+     * @return void
+     */
+    public function update($modifiedObject)
+    {
+        $languageField = $GLOBALS['TCA'][$this->_tablename]['ctrl']['languageField'];
+        $GLOBALS['TCA'][$this->_tablename]['ctrl']['languageField'] = null;
+        parent::update($modifiedObject);
+        $GLOBALS['TCA'][$this->_tablename]['ctrl']['languageField'] = $languageField;
+    }
 }

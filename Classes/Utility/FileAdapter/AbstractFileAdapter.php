@@ -77,13 +77,6 @@ abstract class AbstractFileAdapter implements FileAdapterInterface
     protected $sysLanguageUtility;
 
     /**
-     * Object utility
-     *
-     * @var Object
-     */
-    protected $objectUtility;
-
-    /**
      * Object manager
      *
      * @var ObjectManager
@@ -175,16 +168,6 @@ abstract class AbstractFileAdapter implements FileAdapterInterface
     public function injectSysLanguageUtility(SysLanguages $sysLanguageUtility)
     {
         $this->sysLanguageUtility = $sysLanguageUtility;
-    }
-
-    /**
-     * Inject the object utility
-     *
-     * @param Object $objectUtility Object utility
-     */
-    public function injectObjectUtility(Object $objectUtility)
-    {
-        $this->objectUtility = $objectUtility;
     }
 
     /**

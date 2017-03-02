@@ -80,10 +80,10 @@ class OpenDocumentFormatAdapter extends AbstractFileAdapter
 
         // Prepare temporary import table
         $importTableName = $this->dbUtility->prepareTemporaryImportTable($extensionKey, $mapping);
-        $this->logger->log('Created temporary import table: '.$importTableName);
+        $this->logger->log('Created temporary import table "'.$importTableName.'"');
 
         // Parse the import file into the prepared temporary import table
-        $this->logger->log('Reading import file according to mapping and insert records', FlashMessage::NOTICE);
+        $this->logger->log('Reading import file ...', FlashMessage::NOTICE);
         $skippedColumns = [];
         $rowCount = $this->fileUtility->processFile(
             $extensionKey,
@@ -100,94 +100,6 @@ class OpenDocumentFormatAdapter extends AbstractFileAdapter
         }
 
         return $rowCount;
-    }
-
-    /**
-     * @param string $extensionKey
-     * @param array $record
-     * @param array $hierarchy
-     */
-    protected function _importRecords($extensionKey, $record, $hierarchy, $registryLevel = 0)
-    {
-        $flashMessageSpacer = '';
-        for ($i = 0; $i < $registryLevel; $i++) {
-            $flashMessageSpacer .= '--- ';
-        }
-
-
-        $objectClass = key($hierarchy);
-        $objectConf = $hierarchy[$objectClass];
-        $importIdField = array_key_exists('importIdField',
-            $objectConf) ? $objectConf['importIdField'] : 'tx_twimporter_id';
-
-        $importId = $record[$importIdField];
-
-        // Check the field conditions for this hierarchy, skip if not ok
-        if (!$this->mappingUtility->checkHierarchyConditions($record, $objectConf)) {
-            $this->logger->log(
-                $importIdField.': '.$record[$importIdField].' | Field conditions do not fit for current class '.$objectClass.', moving on.. ',
-                '',
-                FlashMessage::WARNING
-            );
-        } else {
-            foreach ($this->languageSuffices as $sysLanguage => $languageSuffice) {
-
-                // Or createOrGet by parent or by importId
-                if (array_key_exists('parentFindChild', $objectConf)) {
-                    $objectFoundByParent = $this->objectUtility->getByParent($record, $objectConf, $registryLevel,
-                        $sysLanguage);
-                }
-
-                if ($objectFoundByParent instanceof \Tollwerk\TwImporter\Domain\Model\AbstractImportable) {
-                    $object = $objectFoundByParent;
-                    $objectStatus = 'found by parent: uid: '.$object->getUid().' '.get_class($object);
-                } else {
-                    $objectFoundOrCreated = $this->objectUtility->createOrGet($hierarchy, $importId, $sysLanguage,
-                        $registryLevel, $record);
-                    /**
-                     * @var \Tollwerk\TwImporter\Domain\Model\AbstractImportable $object
-                     */
-                    $object = $objectFoundOrCreated['object'];
-                    $objectStatus = $objectFoundOrCreated['status'];
-                }
-
-
-                // Call set or update properties of object
-                // ---------------------------------------
-                if ($registryLevel == 0) {
-                    $object->prepareImport(
-                        $record,
-                        $this->mappingUtility->getMapping($extensionKey),
-                        $suffix
-                    );
-                }
-
-                $object->import(
-                    $record,
-                    $this->mappingUtility->getMapping($extensionKey),
-                    $languageSuffice,
-                    $this->languageSuffices
-                );
-
-                $this->objectUtility->update($hierarchy, $object);
-                $this->persistenceManager->persistAll();
-                $this->logger->log($flashMessageSpacer.'importId: '.$importId.' | language: '.$languageSuffice.' | object: '.$objectClass.' | uid: '.$object->getUid().' | status: '.$objectStatus);
-
-                // Add this object to the $parents array
-                // and try to add current object to a parent, if available
-                // ---------------------------------------------------
-                $this->objectUtility->addParentToRegistry($object, $registryLevel, $sysLanguage);
-                $this->objectUtility->addChildToParent($object, $objectConf, $registryLevel, $sysLanguage);
-            }
-        }
-
-        // Call _importRecords recursively for all children
-        // ------------------------------------------------
-        foreach ($objectConf['children'] as $key => $childObjectConf) {
-            $childObjectClass = $childObjectConf['class'];
-            $this->_importRecords($extensionKey, $record, array($childObjectClass => $childObjectConf),
-                ($registryLevel + 1));
-        }
     }
 
     /**

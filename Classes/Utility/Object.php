@@ -27,6 +27,9 @@ namespace Tollwerk\TwImporter\Utility;
  ***************************************************************/
 
 use Tollwerk\TwImporter\Domain\Model\AbstractImportable;
+use Tollwerk\TwImporter\Domain\Model\TranslatableInterface;
+use Tollwerk\TwImporter\Domain\Repository\AbstractImportableRepository;
+use TYPO3\CMS\Core\Utility\GeneralUtility;
 use TYPO3\CMS\Extbase\Object\ObjectManager;
 use TYPO3\CMS\Extbase\Persistence\Generic\PersistenceManager;
 
@@ -48,6 +51,18 @@ class Object
      * @var PersistenceManager
      */
     protected $persistenceManager = null;
+    /**
+     * Creation status
+     *
+     * @var string
+     */
+    const STATUS_CREATE = 'create';
+    /**
+     * Update status
+     *
+     * @var string
+     */
+    const STATUS_UPDATE = 'update';
 
     /**
      * Array for storing current parent objects when
@@ -57,31 +72,37 @@ class Object
      */
     protected $parentRegistry = array();
 
+    /**
+     * Update statistics counter
+     *
+     * @var array
+     */
     protected $updatedObjectsCounter = array();
 
-
     /**
-     * @param string $objectClass
-     * @param \Tollwerk\TwImporter\Domain\Repository\AbstractImportableRepository $repository
+     * @param string $modelClass
+     * @param AbstractImportableRepository $repository
      * @param int $pid
      * @param int $importId
-     * @return \Tollwerk\TwImporter\Domain\Model\AbstractImportable
+     * @return AbstractImportable
      */
-    protected function createNew(
-        $objectClass,
+    protected function createObject(
+        $modelClass,
         $repository,
         $pid,
         $importId,
         $translationParent = null,
         $sysLanguage = null
     ) {
-
         /**
-         * @var \Tollwerk\TwImporter\Domain\Model\AbstractImportable $object
+         * @var AbstractImportable $object
          */
-        $object = $this->objectManager->get($objectClass);
+        $object = $this->objectManager->get($modelClass);
         $object->setPid($pid);
-        $object->setTxTwimporterId($importId);
+        $object->_setProperty(
+            GeneralUtility::underscoredToLowerCamelCase($repository->getIdentifierColumn()),
+            $importId
+        );
 
         if ($translationParent && $sysLanguage) {
             $object->_setProperty('_languageUid', $sysLanguage);
@@ -96,208 +117,131 @@ class Object
     }
 
     /**
-     * @param array $record
-     * @param array $objectConf
-     * @param int $registryLevel
-     * @param int $sysLanguage
+     * Get or create a new importable object
+     *
+     * @param string $modelClass Model class
+     * @param array $modelConfig Model configuration
+     * @param int $importId Unique identifier
+     * @param int $sysLanguage System language
+     * @return AbstractImportable Importable object
+     * @throws \ErrorException If the model doesn't support localization but localization was requested
      */
-    public function getByParent($record, $objectConf, $registryLevel, $sysLanguage)
+    public function findOrCreateImportableObject($modelClass, $modelConfig, $importId, $sysLanguage)
     {
-        // First, try to find by parentFindChild-method if defined in hierarchy
-        if (array_key_exists('parentFindChild', $objectConf)) {
-
-            $parentObject = $this->getParent($registryLevel, $sysLanguage);
-            $method = $objectConf['parentFindChild'];
-            if (method_exists($parentObject, $method)) {
-                $parentChildObject = $parentObject->{$method}($record, $objectConf);
-                if ($parentChildObject instanceof \Tollwerk\TwImporter\Domain\Model\AbstractImportable) {
-                    return $parentChildObject;
-                }
-
-            }
+        // If the model doesn't support localization but localization was requested
+        $reflectionClass = new \ReflectionClass($modelClass);
+        if (($sysLanguage > 0) && !$reflectionClass->implementsInterface(TranslatableInterface::class)) {
+            throw new \ErrorException('Object doesn\'t support localization');
         }
 
-        return null;
-    }
+        /** @var AbstractImportableRepository $repository */
+        $repository = $this->objectManager->get($modelConfig['repository']);
 
-    /**
-     * @param array $hierarchy
-     * @param int $importId
-     * @param int $sysLanguage
-     * @param int $registryLevel
-     * @return \Tollwerk\TwImporter\Domain\Model\AbstractImportable
-     */
-    public function createOrGet($hierarchy, $importId, $sysLanguage, $registryLevel)
-    {
-        $objectClass = key($hierarchy);
-        $objectConf = $hierarchy[$objectClass];
+        // 1: Always try to find an existing object for the default language first, we need it anyway
+        $object = $repository->findOneByIdentifierAndPid($importId, null);
+        $status = self::STATUS_UPDATE;
 
-        /**
-         * @var \Tollwerk\TwImporter\Domain\Repository\AbstractImportableRepository $repository
-         */
-        $repository = $this->objectManager->get($objectConf['repository']);
-
-        /**
-         * @var \Tollwerk\TwImporter\Domain\Model\AbstractImportable $emptyObject
-         */
-        $emptyObject = $this->objectManager->get($objectClass);
-
-
-        // 1: Always try to find a existing object for
-        // the default language first, we need it anyway
-        // ---------------------------------------------
-        $object = $repository->findOneBySkuAndPid($importId, null);
-
-
-        // 2: If $sysLanguage is default language, return the found
-        // object or create and return a new one on the fly
-        // --------------------------------------------------------
-        if ($sysLanguage == 0) {
-            $status = 'update';
-
-            // If no existing object found, create a new one out of $emptyObject
-            if (!($object instanceof $emptyObject)) {
-                $object = $this->createNew($objectClass, $repository, $objectConf['pid'], $importId);
-                $status = 'create';
+        // 2: If the requested language is the default language (or the table doesn't support localization), (create and) return the object
+        if ($sysLanguage <= 0) {
+            // If no existing object found, create a new one
+            if (!($object instanceof $modelClass)) {
+                $object = $this->createObject($modelClass, $repository, $modelConfig['pid'], $importId);
+                $status = self::STATUS_CREATE;
             }
 
-            return array(
-                'object' => $object,
-                'status' => $status
-            );
+            return [$object, $status];
         }
 
-        // 3: Finally, if $sysLanguage is NOT the default language,
-        // try to return the found translated object or
-        // create and return a new translated object on the fly
-        // -------------------------------------------------------
-        if (!($object instanceof $emptyObject) && $sysLanguage > 0) {
-            throw new \ErrorException('Tried to create translated object when there was no object for the default language');
+        // For non-default languages we need an orig translation, so error if unavailable
+        if (!$object instanceof $modelClass) {
+            throw new \ErrorException('Couldn\'t find default translation model');
         }
 
-        $status = 'update';
+        // For non-default languages we need an original translation, so fail if unavailable
+        if (!$object instanceof $modelClass) {
+            throw new \ErrorException('Couldn\'t find default translation model');
+        }
+
+        // Find or create translation record
         $translatedObject = $repository->findOneByTranslationParent($object, $sysLanguage);
-        if (!($translatedObject instanceof $object)) {
-            $status = 'create';
-            $translatedObject = $this->createNew($objectClass, $repository, $objectConf['pid'], $importId, $object,
-                $sysLanguage);
+        if (!($translatedObject instanceof $modelClass)) {
+            $translatedObject = $this->createObject(
+                $modelClass,
+                $repository,
+                $modelConfig['pid'],
+                $importId,
+                $object,
+                $sysLanguage
+            );
+            $status = self::STATUS_CREATE;
             $this->persistenceManager->persistAll();
         }
 
-        return array(
-            'object' => $translatedObject,
-            'status' => $status
-        );
+        return [$translatedObject, $status];
     }
 
     /**
-     * @param array $hierarchy
-     * @param \Tollwerk\TwImporter\Domain\Model\AbstractImportable $object
+     * Persist an updated object
+     *
+     * @param string $modelClass Model class
+     * @param array $modelConfig Model configuration
+     * @param AbstractImportable $object Updated object
+     * @return void
      */
-    public function update($hierarchy, $object)
+    public function update($modelClass, array $modelConfig, AbstractImportable $object)
     {
-        $objectClass = key($hierarchy);
-        $objectConf = $hierarchy[$objectClass];
-
-        /**
-         * @var \Tollwerk\TwImporter\Domain\Repository\AbstractImportableRepository $repository
-         */
-        $repository = $this->objectManager->get($objectConf['repository']);
+        /** @var AbstractImportableRepository $repository */
+        $repository = $this->objectManager->get($modelConfig['repository']);
         $repository->update($object);
         $this->persistenceManager->persistAll();
 
-        if (!array_key_exists($objectClass, $this->updatedObjectsCounter)) {
-            $this->updatedObjectsCounter[$objectClass] = 0;
+        // Statistically register the updated object
+        if (!array_key_exists($modelClass, $this->updatedObjectsCounter)) {
+            $this->updatedObjectsCounter[$modelClass] = 0;
         }
-        ++$this->updatedObjectsCounter[$objectClass];
+        ++$this->updatedObjectsCounter[$modelClass];
     }
 
     /**
-     * @param \Tollwerk\TwImporter\Domain\Model\AbstractImportable $object
-     * @param int $level
-     * @param int $sysLanguage
-     * @return bool
+     * Register an object with its hierarchical parent object
+     *
+     * @param AbstractImportable $object Child object
+     * @param array $modelConf Child model configuration
+     * @param AbstractImportable $parentObject Parent object
+     * @return boolean Success
+     * @throws \ErrorException If the registration method is not available
      */
-    public function addParentToRegistry($object, $level, $sysLanguage)
-    {
-        if ($level < 0) {
-            return false;
+    public function registerWithParentObject(
+        AbstractImportable $object,
+        array $modelConf,
+        AbstractImportable $parentObject
+    ) {
+        // TODO: Add option to exclude children (mm relations etc.) from translation / use l10n_mode etc. from TCA
+
+        // Determine the registration method (config or convention)
+        $registrationMethod = 'add'.(new \ReflectionClass(get_class($object)))->getShortName();
+        if (!empty($modelConf['registerWithParentMethod'])) {
+            $registrationMethod = $modelConf['registerWithParentMethod'];
         }
 
-        if (!is_array($this->parentRegistry[$sysLanguage])) {
-            $this->parentRegistry[$sysLanguage] = array();
+        // If the registration method is not available
+        if (!is_callable([$parentObject, $registrationMethod])) {
+            throw new \ErrorException('Registration method '.get_class($parentObject).'->'.$registrationMethod.' is not callable');
         }
 
-        $this->parentRegistry[$sysLanguage][$level] = $object;
+        // Register the child
+        $parentObject->$registrationMethod($object);
+        $this->persistenceManager->update($parentObject);
+        $this->persistenceManager->persistAll();
+
         return true;
     }
 
     /**
-     * @param int $childRegistryLevel
-     * @param int $sysLanguage
-     * @return null|AbstractImportable
+     * Return the update statistics counter
+     *
+     * @return array Update statistics counter
      */
-    public function getParent($childRegistryLevel, $sysLanguage)
-    {
-
-        // TODO: Add option to exclude children (mm relations etc.) from translation / use l10n_mode etc. from TCA
-
-        // First, try to get the parent for the $child.
-        // If there is no parent, then we don't need to proceed
-        // ----------------------------------------------------
-        $parentRegistryLevel = $childRegistryLevel - 1;
-        if ($parentRegistryLevel < 0 || $parentRegistryLevel >= count($this->parentRegistry[$sysLanguage])) {
-            return null;
-        }
-
-        /**
-         * @var \Tollwerk\TwImporter\Domain\Model\AbstractImportable $parentObject
-         */
-        $parentObject = $this->parentRegistry[$sysLanguage][$parentRegistryLevel];
-        if (!($parentObject instanceof \Tollwerk\TwImporter\Domain\Model\AbstractImportable)) {
-            return null;
-        }
-
-        return $parentObject;
-    }
-
-    /**
-     * @param \Tollwerk\TwImporter\Domain\Model\AbstractImportable $child
-     * @param array $childConf
-     * @param int $childRegistryLevel
-     * @param int $sysLanguage
-     * @return bool
-     */
-    public function addChildToParent($child, $childConf, $childRegistryLevel, $sysLanguage)
-    {
-
-        // TODO: Add option to exclude children (mm relations etc.) from translation / use l10n_mode etc. from TCA
-        $parentObject = $this->getParent($childRegistryLevel, $sysLanguage);
-        if (!$parentObject) {
-            return false;
-        }
-
-
-        // Get classnames for $parentObject and $child without their namespaces
-        // --------------------------------------------------------------------
-        $reflectionClass = new \ReflectionClass(get_class($child));
-        $childClassname = $reflectionClass->getShortName();
-        $reflectionClass = new \ReflectionClass(get_class($parentObject));
-        $parentClassname = $reflectionClass->getShortName();
-
-        // Finally, add child to parent according to $addToParentMode defined in hierarchy
-        // -------------------------------------------------------------------------------
-
-        if ($childConf['parentAddImportChild']) {
-            $parentObject->addImportChild($child, $childConf, $sysLanguage);
-        } else {
-            $methodName = 'add'.$childClassname;
-            $parentObject->{$methodName}($child);
-            $this->persistenceManager->persistAll();
-        }
-        return true;
-    }
-
     public function getUpdatedObjectsCounter()
     {
         return $this->updatedObjectsCounter;
@@ -308,7 +252,7 @@ class Object
      *
      * @param ObjectManager $objectManager Object manager
      */
-    public function setObjectManager(ObjectManager $objectManager)
+    public function injectObjectManager(ObjectManager $objectManager)
     {
         $this->objectManager = $objectManager;
     }
@@ -318,7 +262,7 @@ class Object
      *
      * @param PersistenceManager $persistenceManager Persistence manager
      */
-    public function setPersistenceManager(PersistenceManager $persistenceManager)
+    public function injectPersistenceManager(PersistenceManager $persistenceManager)
     {
         $this->persistenceManager = $persistenceManager;
     }

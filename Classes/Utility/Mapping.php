@@ -103,20 +103,18 @@ class Mapping
     }
 
     /**
-     * Check the hierarchy conditions
+     * Check the hierarchy pre-conditions
      *
      * @param array $record Record
      * @param array $objectConf Object configuration
-     * @return boolean Success
+     * @return boolean Hierarchy pre-conditions match
      */
     public function checkHierarchyConditions($record, $objectConf)
     {
-        $mustBeSet = $objectConf['conditions']['mustBeSet'];
-        $mustBeEmpty = $objectConf['conditions']['mustBeEmpty'];
-
         // Check all fields that must be set
+        $mustBeSet = isset($objectConf['conditions']['mustBeSet']) ? $objectConf['conditions']['mustBeSet'] : null;
         if (is_array($mustBeSet) && count($mustBeSet)) {
-            foreach ($mustBeSet as $key => $fieldname) {
+            foreach ($mustBeSet as $fieldname) {
                 if (empty($record[$fieldname])) {
                     return false;
                 }
@@ -124,8 +122,9 @@ class Mapping
         }
 
         // Check all fields that must be empty
+        $mustBeEmpty = isset($objectConf['conditions']['mustBeEmpty']) ? $objectConf['conditions']['mustBeEmpty'] : null;
         if (is_array($mustBeEmpty) && count($mustBeEmpty)) {
-            foreach ($mustBeEmpty as $key => $fieldname) {
+            foreach ($mustBeEmpty as $fieldname) {
                 if (!empty($record[$fieldname])) {
                     return false;
                 }

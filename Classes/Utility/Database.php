@@ -26,11 +26,28 @@
 
 namespace Tollwerk\TwImporter\Utility;
 
+use TYPO3\CMS\Core\Database\DatabaseConnection;
+
 /**
  * Database utility
  */
 class Database
 {
+    /**
+     * Database connection
+     *
+     * @var DatabaseConnection
+     */
+    protected $database;
+
+    /**
+     * Database utility constructor
+     */
+    public function __construct()
+    {
+        $this->database =& $GLOBALS['TYPO3_DB'];
+    }
+
     /**
      * Create and return the temporary database table name for import
      *
@@ -53,12 +70,12 @@ class Database
     public function prepareTemporaryImportTable($extensionKey, $mapping)
     {
         // Preparing temporary database table
-        if (!$GLOBALS['TYPO3_DB']->sql_query('DROP TABLE IF EXISTS `'.self::getTableName($extensionKey).'`')) {
+        if (!$this->database->sql_query('DROP TABLE IF EXISTS `'.self::getTableName($extensionKey).'`')) {
             throw new \ErrorException('Couldn\'t prepare database (already exists)');
         }
 
         // If the table cannot be created
-        if (!$GLOBALS['TYPO3_DB']->sql_query(
+        if (!$this->database->sql_query(
             'CREATE TABLE `'.self::getTableName($extensionKey).'` ( `'.implode('` TEXT NULL DEFAULT NULL, `',
                 array_keys($mapping)).'` TEXT NULL DEFAULT NULL) ENGINE = MyISAM')
         ) {
@@ -77,6 +94,22 @@ class Database
      */
     public function insertRow($extensionKey, array $row)
     {
-        return $GLOBALS['TYPO3_DB']->exec_INSERTquery(self::getTableName($extensionKey), $row);
+        return $this->database->exec_INSERTquery(self::getTableName($extensionKey), $row);
+    }
+
+    /**
+     * Iterate over all temporary records
+     *
+     * @param string $extensionKey Extension key
+     * @return \Generator Temporary records
+     */
+    public function getTemporaryRecords($extensionKey)
+    {
+        $temporaryRecordRes = $this->database->exec_SELECTquery('*', self::getTableName($extensionKey));
+        if ($temporaryRecordRes) {
+            while ($temporaryRecord = $this->database->sql_fetch_assoc($temporaryRecordRes)) {
+                yield $temporaryRecord;
+            }
+        }
     }
 }

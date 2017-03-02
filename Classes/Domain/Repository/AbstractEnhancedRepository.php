@@ -1,6 +1,4 @@
 <?php
-namespace Tollwerk\TwImporter\Domain\Repository;
-
 
 /***************************************************************
  *
@@ -28,28 +26,32 @@ namespace Tollwerk\TwImporter\Domain\Repository;
  *  This copyright notice MUST APPEAR in all copies of the script!
  ***************************************************************/
 
+namespace Tollwerk\TwImporter\Domain\Repository;
+
+use TYPO3\CMS\Extbase\Persistence\Repository;
+
 /**
  * Abstract repository for translatable records
  */
-abstract class AbstractEnhancedRepository extends \TYPO3\CMS\Extbase\Persistence\Repository {
-
+abstract class AbstractEnhancedRepository extends Repository
+{
     /**
      * Find multiple records by identifier
-     * 
-     * @param \array $uids          List of identifiers
+     *
+     * @param \array $uids List of identifiers
      * @return \array               Matching records
      */
-	public function findByUids(array $uids) {
-	    $uids = array_map('intval', array_filter($uids));
-	    if (!count($uids)) {
-	        return array();
-	    }
+    public function findByUids(array $uids)
+    {
+        $uids = array_map('intval', array_filter($uids));
+        if (!count($uids)) {
+            return array();
+        }
 
-		$query = $this->createQuery();
-		$query->getQuerySettings()->setRespectSysLanguage(false);
-		$query->matching($query->in('uid', $uids));
+        $query = $this->createQuery();
+        $query->getQuerySettings()->setRespectSysLanguage(false);
+        $query->matching($query->in('uid', $uids));
 
-		return $query->execute();
-	}
-
+        return $query->execute();
+    }
 }

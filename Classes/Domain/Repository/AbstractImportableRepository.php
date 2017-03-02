@@ -28,230 +28,206 @@ namespace Tollwerk\TwImporter\Domain\Repository;
  *  This copyright notice MUST APPEAR in all copies of the script!
  ***************************************************************/
 
+use TYPO3\CMS\Core\Database\DatabaseConnection;
 use \TYPO3\CMS\Core\Utility\GeneralUtility;
+use TYPO3\CMS\Extbase\DomainObject\AbstractEntity;
+use TYPO3\CMS\Extbase\Persistence\QueryInterface;
+use TYPO3\CMS\Extbase\Persistence\QueryResultInterface;
 
 /**
  * Abstract repository for importable records
  */
-abstract class AbstractImportableRepository extends AbstractTranslatableRepository {
+abstract class AbstractImportableRepository extends AbstractEnhancedRepository
+{
+    /**
+     * Default identifier column
+     *
+     * @var string
+     */
+    protected $identifierColumn = 'tx_twimporter_id';
 
-	
-	
-	
-	/**
-	 * @var string
-	 */
-	protected $field_sku = 'tx_twimporter_id';
+    /**
+     * Return the import identifier column name
+     *
+     * @return string Import identifier column
+     */
+    public function getIdentifierColumn()
+    {
+        return $this->identifierColumn;
+    }
 
+    /**
+     * Return all record UIDs
+     *
+     * @return array UIDs
+     */
+    public function findAllUids()
+    {
+        $query = $this->createQuery();
+        $sysLanguageUid = $GLOBALS['TSFE']->sys_language_uid ?: 0;
 
+        $statement = '
+			SELECT uid
+			FROM '.$this->_tablename.'
+			WHERE deleted = 0 AND hidden = 0 AND sys_language_uid = '.$sysLanguageUid;
 
+        $query->statement($statement);
+        $result = $query->execute(true);
 
-	/**
-	 * Find all  uids
-	 *
-	 * @param mixed $languageUid
-	 *
-	 * @return array
-	 */
-	public function findAllUids()
-	{
+        $uids = [];
+        foreach ($result as $record) {
+            $uids[] = $record['uid'];
+        }
 
+        return $uids;
+    }
 
-		$query = $this->createQuery();
-		$sysLanguageUid = $GLOBALS['TSFE']->sys_language_uid;
+    /**
+     * Find an object by identifier and PID
+     *
+     * @param string $identifier Identifier
+     * @param int $pid PID
+     * @param bool $ignoreEnableFields Ignore the enable fields
+     * @param bool $includeDeleted Include deleted records
+     * @return AbstractEntity Object
+     */
+    public function findOneByIdentifierAndPid(
+        $identifier,
+        $pid = null,
+        $ignoreEnableFields = false,
+        $includeDeleted = false
+    ) {
+        $query = $this->createQuery();
+        $query->getQuerySettings()
+            ->setRespectStoragePage(false)
+            ->setRespectSysLanguage(false)
+            ->setIgnoreEnableFields($ignoreEnableFields)
+            ->setIncludeDeleted($includeDeleted);
 
-		if ($sysLanguageUid === null) {
-			$sysLanguageUid = 0;
-		}
+        $constraints = array(
+            $query->equals($this->identifierColumn, $identifier),
+        );
 
-		$statement = '
-			SELECT 		f.uid
-			FROM 		'.$this->_tablename.'
-			WHERE		f.deleted = 0 AND f.hidden = 0 AND sys_language_uid = ' . $sysLanguageUid;
+        // If this repository's models are translatable: Fetch the default language only
+        if ($this instanceof TranslatableRepositoryInterface) {
+            $constraints[] = $query->equals('translationLanguage', 0);
+        }
 
-		$query->statement($statement);
-		$result = $query->execute(true);
+        if ($pid != null) {
+            $constraints[] = $query->equals('pid', $pid);
+        }
 
-		$uids = array();
-		foreach ($result as $r) {
-			$uids[] = $r['uid'];
-		}
+        $query->matching($query->logicalAnd($constraints));
+        return $query->execute()->getFirst();
+    }
 
-		return $uids;
-	}
+    /**
+     * Return all records not modified since at least a particular timestamp
+     *
+     * @param \int $tstamp Timestamp
+     * @return QueryResultInterface Records older than the timestamp
+     */
+    public function findAllOlderThan($tstamp)
+    {
+        $query = $this->createQuery();
+        $query->getQuerySettings()
+            ->setRespectStoragePage(false)
+            ->setIgnoreEnableFields(true)
+            ->setIncludeDeleted(false);
+        return $query->matching($query->lessThan('import', intval($tstamp)))->execute();
+    }
 
-	/**
-	 * Find an object by SKU and PID
-	 * 
-	 * @param string $sku			SKU
-	 * @param int $pid			PID
-	 * @param bool	$debug
-	 * @return \TYPO3\CMS\Extbase\DomainObject\AbstractEntity		Object
-	 */
-	public function findOneBySkuAndPid($sku, $pid = NULL, $debug = FALSE, $ignoreEnableFields = FALSE, $includeDeleted = FALSE) {
+    /**
+     * Remove orphaned translations
+     *
+     * @return \boolean                Success
+     */
+    public function removeOrphanedTranslations()
+    {
+        /* @var $DB DatabaseConnection */
+        $DB =& $GLOBALS['TYPO3_DB'];
+        $sql = 'UPDATE `'.$this->_tablename.'` AS `t1` INNER JOIN `'.$this->_tablename.'` AS `t2` ON `t1`.`l10n_parent` = `t2`.`uid` AND `t2`.`deleted` = 1 SET `t1`.`deleted` = 1';
+        return !!$DB->sql_query($sql);
+    }
 
+    /**
+     * Returns an array with ordering arrays for sorting by given values (e.g. uid=3, uid=6, uid=1, uid=2)
+     *
+     * @param string $field The field name / property for sorting
+     * @param unknown $values Arrays with values for this field name / property.
+     * @return array            Orderings for extbase query
+     */
+    protected function _orderByField($field, $values)
+    {
+        $orderings = array();
+        foreach ($values as $value) {
+            $orderings[$field.'='.$value] = QueryInterface::ORDER_DESCENDING;
+        }
+        return $orderings;
+    }
 
+    /**
+     * Find by multiple UIDs
+     *
+     * @param mixed $uids Array or comma separated list of uids
+     * @param integer $page Offset for the query
+     * @param integer $itemsPerPage Limit for the query
+     * @param string $sortBy Field to order by. Please note: It's possible to attach |DESC or |ASC to the $sortBy string :-)
+     * @param string $ascDesc ASC / DESC or see \TYPO3\CMS\Extbase\Persistence\QueryInterface::ORDER_ASCENDING etc.
+     * @return object
+     * @see https://forge.typo3.org/issues/14026
+     */
+    public function findByUids($uids, $page = 0, $itemsPerPage = 0, $sortBy = false, $ascDesc = false)
+    {
+        // Normalize the UID list
+        if (!is_array($uids)) {
+            $uids = GeneralUtility::trimExplode(',', $uids);
+        }
+        array_filter($uids);
 
-		$query			= $this->createQuery();
-		$query->getQuerySettings()->setRespectStoragePage(FALSE);
-		$query->getQuerySettings()->setRespectSysLanguage(FALSE);
-		$query->getQuerySettings()->setIgnoreEnableFields($ignoreEnableFields);
-		$query->getQuerySettings()->setIncludeDeleted($includeDeleted);
+        $query = $this->createQuery();
 
+        // If there's particular number of results to be fetched
+        if ($itemsPerPage > 0) {
+            $query->setLimit(intval($itemsPerPage));
 
+            // If there's an offset
+            if ($page > 0) {
+                $query->setOffset(intval($page));
+            }
+        }
 
+        // If a particular column is selected for sorting
+        if ($sortBy) {
 
-		if($debug){
-			echo ' > findOneBySkuAndPid: sku = '.$sku.', pid = '.$pid.PHP_EOL;
-		}
+            // Check if there's a asc / desc String
+            $sortByExplode = explode('|', $sortBy);
+            $sortByField = $sortByExplode[0];
+            $sortByAscDesc = (count($sortByExplode) > 1 ? $sortByExplode[1] : false);
 
-		$constraints = array(
-			$query->equals($this->field_sku, $sku),
-			$query->equals('translationLanguage', 0)
-		);
+            $query->setOrderings(array(
+                $sortByField => ($sortByAscDesc ? $sortByAscDesc : QueryInterface::ORDER_ASCENDING)
+            ));
 
-		if($pid != NULL){
-			$constraints[] = $query->equals('pid', $pid);
-		}
-
-		$query->matching($query->logicalAnd($constraints));
-
-
-
-		$result = $query->execute()->getFirst();
-
-		
-
-		if($debug){
-			echo " result: ".gettype($result).' - '.get_class($result);
-			if($result instanceof \TYPO3\CMS\Extbase\DomainObject\AbstractEntity){
-				echo ', uid: '.$result->getUid();
-
-				try {
-					echo ' deleted: '.intval($result->getDeleted()).', hidden: '.intval($result->getHidden());
-				}catch(\Exception $e){
-
-				}
-
-				echo PHP_EOL;
-
-			}
-		}
-
-		return $query->execute()->getFirst();
-	}
-	
-	/**
-	 * Return all records not modified since at least a particular timestamp
-	 * 
-	 * @param \int $tstamp			Timestamp
-	 * @return Ambigous <\TYPO3\CMS\Extbase\Persistence\QueryResultInterface, \TYPO3\CMS\Extbase\Persistence\array>
-	 */
-	public function findAllOlderThan($tstamp) {
-		$query			= $this->createQuery();
-		$query->getQuerySettings()->setRespectStoragePage(FALSE);
-// 		$query->getQuerySettings()->setRespectSysLanguage(FALSE);
-		$query->getQuerySettings()->setIgnoreEnableFields(TRUE);
-		$query->getQuerySettings()->setIncludeDeleted(false);
-		return $query->matching($query->lessThan('import', intval($tstamp)))->execute();
-	}
-	
-	/**
-	 * Remove orphaned translations
-	 * 
-	 * @return \boolean				Success
-	 */
-	public function removeOrphanedTranslations() {
-		
-		/* @var $DB \TYPO3\CMS\Core\Database\DatabaseConnection */
-		$DB				=& $GLOBALS['TYPO3_DB'];
-		$sql			= 'UPDATE `'.$this->_tablename.'` AS `t1` INNER JOIN `'.$this->_tablename.'` AS `t2` ON `t1`.`l10n_parent` = `t2`.`uid` AND `t2`.`deleted` = 1 SET `t1`.`deleted` = 1';
-		return !!$DB->sql_query($sql);
-	}
-
-
-	/**
-	 * Returns an array with ordering arrays for sorting by given values (e.g. uid=3, uid=6, uid=1, uid=2)
-	 *
-	 * @param string $field The field name / property for sorting
-	 * @param unknown $values Arrays with values for this field name / property.
-	 * @return array            Orderings for extbase query
-	 */
-	protected function _orderByField($field, $values)
-	{
-		$orderings = array();
-		foreach ($values as $value) {
-			$orderings[$field . '=' . $value] = \TYPO3\CMS\Extbase\Persistence\QueryInterface::ORDER_DESCENDING;
-		}
-		return $orderings;
-	}
-
-	/**
-	 * Find by multiple uids.
-	 *
-	 * @param mixed $uids Array or comma separated list of uids
-	 * @param integer $page Offset for the query
-	 * @param integer $itemsPerPage Limit for the query
-	 * @param string $sortBy Field to order by. Please note: It's possible to attach |DESC or |ASC to the $sortBy string :-)
-	 * @param string $ascDesc ASC / DESC or see \TYPO3\CMS\Extbase\Persistence\QueryInterface::ORDER_ASCENDING etc.
-	 * @return object
-	 * @see https://forge.typo3.org/issues/14026
-	 */
-	public function findByUids($uids, $page = 0, $itemsPerPage = 0, $sortBy = false, $ascDesc = false)
-	{
-
-		// Normalize the UID list
-		if (!is_array($uids)) {
-			$uids = GeneralUtility::trimExplode(',', $uids);
-		}
-		array_filter($uids);
-
-		$query = $this->createQuery();
-
-		// If there's particular number of results to be fetched
-		if ($itemsPerPage > 0) {
-			$query->setLimit(intval($itemsPerPage));
-
-			// If there's an offset
-			if ($page > 0) {
-				$query->setOffset(intval($page));
-			}
-		}
-
-		// If a particular column is selected for sorting
-		if ($sortBy) {
-
-			// Check if there's a asc / desc String
-			$sortByExplode = explode('|', $sortBy);
-			$sortByField = $sortByExplode[0];
-			$sortByAscDesc = (count($sortByExplode) > 1 ? $sortByExplode[1] : false);
-
-			$query->setOrderings(array(
-				$sortByField => ($sortByAscDesc ? $sortByAscDesc : \TYPO3\CMS\Extbase\Persistence\QueryInterface::ORDER_ASCENDING)
-			));
-
-			// Else sort by the given uids
-		} else {
-			// Not supported by TYPO3, needs ugly hack instead
+            // Else sort by the given UIDs
+        } else {
+            // Not supported by TYPO3, needs ugly hack instead
 // 			$query->setOrderings(array(
 // 				'FIND_IN_SET('.$this->_tablename.'.uid, "'.implode(',', $uids).'")' => \TYPO3\CMS\Extbase\Persistence\QueryInterface::ORDER_ASCENDING
 // 			));
 
-			$query->setOrderings($this->_orderByField('uid', $uids));
-		}
+            $query->setOrderings($this->_orderByField('uid', $uids));
+        }
 
-		// Match the given UIDs only
-		$query->matching($query->in('uid', $uids));
+        // Match the given UIDs only
+        $query->matching($query->in('uid', $uids));
 
-		// Disable language overlay, because the given object $uids
-		// should be the correct ones already anyway. If this is not set,
-		// the query won't return anything in others than the default sys_language
-		$query->getQuerySettings()->setRespectSysLanguage(false);
-		$result = $query->execute();
+        // Disable language overlay, because the given object $uids
+        // should be the correct ones already anyway. If this is not set,
+        // the query won't return anything in others than the default sys_language
+        $query->getQuerySettings()->setRespectSysLanguage(false);
+        $result = $query->execute();
 
-
-
-		return $result;
-	}
-
+        return $result;
+    }
 }
