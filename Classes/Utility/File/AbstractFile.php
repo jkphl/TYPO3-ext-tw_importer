@@ -34,6 +34,22 @@ use TYPO3\CMS\Core\Utility\GeneralUtility;
 abstract class AbstractFile implements FileInterface
 {
     /**
+     * Adapter configuration
+     *
+     * @var array
+     */
+    protected $config;
+
+    /**
+     * Set the adapter configuration
+     *
+     * @param array $config Adapter configuration
+     */
+    public function setConfig(array $config)
+    {
+        $this->config = $config;
+    }
+    /**
      * Expand and validate a directory path
      *
      * @param \string $directory Directory path
@@ -55,4 +71,5 @@ abstract class AbstractFile implements FileInterface
         }
         return $directory;
     }
+
 }

@@ -46,7 +46,7 @@ class SysLanguages
      *
      * @return array            Language suffices
      */
-    public static function suffices($languages)
+    public static function suffices(array $languages)
     {
         if (self::$_languageSuffices === null) {
             self::$_languageSuffices = array(0 => $languages['defaultSuffix']);

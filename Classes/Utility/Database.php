@@ -94,7 +94,8 @@ class Database
      */
     public function insertRow($extensionKey, array $row)
     {
-        return $this->database->exec_INSERTquery(self::getTableName($extensionKey), $row);
+        $result = $this->database->exec_INSERTquery(self::getTableName($extensionKey), $row);
+        return $result;
     }
 
     /**

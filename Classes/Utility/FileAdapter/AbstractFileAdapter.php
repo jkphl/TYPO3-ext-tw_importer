@@ -28,10 +28,8 @@ namespace Tollwerk\TwImporter\Utility\FileAdapter;
 
 use Tollwerk\TwImporter\Utility\Database;
 use Tollwerk\TwImporter\Utility\File\FileInterface;
-use Tollwerk\TwImporter\Utility\ImportData;
 use Tollwerk\TwImporter\Utility\LoggerInterface;
 use Tollwerk\TwImporter\Utility\Mapping;
-use Tollwerk\TwImporter\Utility\Object;
 use Tollwerk\TwImporter\Utility\SysLanguages;
 use TYPO3\CMS\Extbase\Object\ObjectManager;
 use TYPO3\CMS\Extbase\Persistence\Generic\PersistenceManager;
@@ -41,6 +39,13 @@ use TYPO3\CMS\Extbase\Persistence\Generic\PersistenceManager;
  */
 abstract class AbstractFileAdapter implements FileAdapterInterface
 {
+    /**
+     * Adapter configuration
+     *
+     * @var array
+     */
+    protected $config;
+
     /**
      * File utilty
      *
@@ -61,13 +66,6 @@ abstract class AbstractFileAdapter implements FileAdapterInterface
      * @var Mapping
      */
     protected $mappingUtility;
-
-    /**
-     * Import data utility
-     *
-     * @var ImportData
-     */
-    protected $importDataUtility;
 
     /**
      * System language utility
@@ -115,8 +113,9 @@ abstract class AbstractFileAdapter implements FileAdapterInterface
      *
      * @param LoggerInterface $logger Logger
      */
-    public function __construct(LoggerInterface $logger)
+    public function __construct(array $config, LoggerInterface $logger)
     {
+        $this->config = $config;
         $this->logger = $logger;
     }
 
@@ -148,16 +147,6 @@ abstract class AbstractFileAdapter implements FileAdapterInterface
     public function injectMappingUtility(Mapping $mappingUtility)
     {
         $this->mappingUtility = $mappingUtility;
-    }
-
-    /**
-     * Inject the import data utility
-     *
-     * @param ImportData $importDataUtility Import data utility
-     */
-    public function injectImportDataUtility(ImportData $importDataUtility)
-    {
-        $this->importDataUtility = $importDataUtility;
     }
 
     /**

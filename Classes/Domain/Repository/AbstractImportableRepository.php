@@ -28,6 +28,7 @@ namespace Tollwerk\TwImporter\Domain\Repository;
  *  This copyright notice MUST APPEAR in all copies of the script!
  ***************************************************************/
 
+use Tollwerk\TwImporter\Domain\Model\AbstractImportable;
 use TYPO3\CMS\Core\Database\DatabaseConnection;
 use \TYPO3\CMS\Core\Utility\GeneralUtility;
 use TYPO3\CMS\Extbase\DomainObject\AbstractEntity;
@@ -122,19 +123,40 @@ abstract class AbstractImportableRepository extends AbstractEnhancedRepository
     }
 
     /**
-     * Return all records not modified since at least a particular timestamp
+     * Return all records not modified since a particular timestamp
      *
-     * @param \int $tstamp Timestamp
+     * @param int $timestamp Timestamp
      * @return QueryResultInterface Records older than the timestamp
      */
-    public function findAllOlderThan($tstamp)
+    public function findOlderThan($timestamp)
     {
         $query = $this->createQuery();
         $query->getQuerySettings()
             ->setRespectStoragePage(false)
             ->setIgnoreEnableFields(true)
             ->setIncludeDeleted(false);
-        return $query->matching($query->lessThan('import', intval($tstamp)))->execute();
+        return $query->matching($query->lessThan('import', intval($timestamp)))->execute();
+    }
+
+    /**
+     * Delete all records not modified since a particular timestamp
+     *
+     * @param $timestamp
+     * @return int
+     */
+    public function deleteOlderThan($timestamp)
+    {
+        $deleted = 0;
+
+        /** @var AbstractImportable $object */
+        foreach ($this->findOlderThan($timestamp) as $object) {
+            $this->remove($object);
+            ++$deleted;
+        }
+
+        $this->persistenceManager->persistAll();
+
+        return $deleted;
     }
 
     /**
@@ -157,7 +179,7 @@ abstract class AbstractImportableRepository extends AbstractEnhancedRepository
      * @param unknown $values Arrays with values for this field name / property.
      * @return array            Orderings for extbase query
      */
-    protected function _orderByField($field, $values)
+    protected function orderByField($field, $values)
     {
         $orderings = array();
         foreach ($values as $value) {
@@ -216,7 +238,7 @@ abstract class AbstractImportableRepository extends AbstractEnhancedRepository
 // 				'FIND_IN_SET('.$this->_tablename.'.uid, "'.implode(',', $uids).'")' => \TYPO3\CMS\Extbase\Persistence\QueryInterface::ORDER_ASCENDING
 // 			));
 
-            $query->setOrderings($this->_orderByField('uid', $uids));
+            $query->setOrderings($this->orderByField('uid', $uids));
         }
 
         // Match the given UIDs only

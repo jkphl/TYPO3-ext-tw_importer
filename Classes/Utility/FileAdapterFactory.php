@@ -26,6 +26,7 @@
 
 namespace Tollwerk\TwImporter\Utility;
 
+use Tollwerk\TwImporter\Utility\FileAdapter\CsvAdapter;
 use Tollwerk\TwImporter\Utility\FileAdapter\FileAdapterInterface;
 use Tollwerk\TwImporter\Utility\FileAdapter\OpenDocumentFormatAdapter;
 use TYPO3\CMS\Extbase\Object\ObjectManager;
@@ -49,26 +50,27 @@ class FileAdapterFactory
      */
     protected static $fileAdapters = [
         OpenDocumentFormatAdapter::NAME => OpenDocumentFormatAdapter::class,
+        CsvAdapter::NAME => CsvAdapter::class,
     ];
 
     /**
      * Instantiate a file adapter by name
      *
-     * @param string $name File adapter name
+     * @param array $nameConfig File adapter name and configuration
      * @param LoggerInterface $logger Logger
      * @return FileAdapterInterface File adapter
      * @throws If the file adapter name is unknown
      */
-    public function getAdapterByName($name, LoggerInterface $logger)
+    public function getAdapterByName(array $nameConfig, LoggerInterface $logger)
     {
-        $name = trim($name);
+        $name = trim($nameConfig['name']);
 
         // If the file adapter name is unknown
         if (!strlen($name) || !isset(self::$fileAdapters[$name])) {
             throw new \InvalidArgumentException(sprintf('Unknown file adapter "%s"', $name), 1488382399);
         }
 
-        return $this->objectManager->get(self::$fileAdapters[$name], $logger);
+        return $this->objectManager->get(self::$fileAdapters[$name], $nameConfig['config'], $logger);
     }
 
     /**

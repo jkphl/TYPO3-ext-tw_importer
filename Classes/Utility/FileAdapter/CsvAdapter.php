@@ -36,18 +36,21 @@
 
 namespace Tollwerk\TwImporter\Utility\FileAdapter;
 
-use Tollwerk\TwImporter\Utility\File\OpenDocumentFormatFile;
+use Tollwerk\TwImporter\Utility\File\CsvFile;
 use TYPO3\CMS\Core\Messaging\FlashMessage;
 
 /**
- * Open Document Format (ODF) adapter
+ * CSV Adapter
+ *
+ * @package Jkphl\Rdfalite
+ * @subpackage Tollwerk\TwImporter\Utility\FileAdapter
  */
-class OpenDocumentFormatAdapter extends AbstractFileAdapter
+class CsvAdapter extends AbstractFileAdapter
 {
     /**
      * File utility
      *
-     * @var OpenDocumentFormatFile
+     * @var CsvFile
      */
     protected $fileUtility;
 
@@ -56,7 +59,7 @@ class OpenDocumentFormatAdapter extends AbstractFileAdapter
      *
      * @var string
      */
-    const NAME = 'ods';
+    const NAME = 'csv';
 
     /**
      * Import a file
@@ -103,11 +106,11 @@ class OpenDocumentFormatAdapter extends AbstractFileAdapter
     }
 
     /**
-     * Inject the Open Document Format file utility
+     * Inject the CSV file utility
      *
-     * @param OpenDocumentFormatFile $fileUtility Open Document Format file utility
+     * @param CsvFile $fileUtility CSV file utility
      */
-    public function injectFileUtility(OpenDocumentFormatFile $fileUtility)
+    public function injectFileUtility(CsvFile $fileUtility)
     {
         $this->fileUtility = $fileUtility;
         $this->fileUtility->setConfig($this->config);

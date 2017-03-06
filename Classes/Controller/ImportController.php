@@ -30,6 +30,7 @@ namespace Tollwerk\TwImporter\Controller;
 use Tollwerk\TwImporter\Utility\ImportService;
 use Tollwerk\TwImporter\Utility\LoggerInterface;
 use Tollwerk\TwImporter\Utility\SysLanguages;
+use TYPO3\CMS\Core\Messaging\AbstractMessage;
 use TYPO3\CMS\Core\Messaging\FlashMessage;
 use TYPO3\CMS\Extbase\Configuration\BackendConfigurationManager;
 use TYPO3\CMS\Extbase\Mvc\Controller\ActionController;
@@ -84,13 +85,13 @@ class ImportController extends ActionController implements LoggerInterface
      * @see \TYPO3\CMS\Core\Messaging\FlashMessage
      * @api
      */
-    public function flashMessage(
+    public function addFlashMessage(
         $messageBody,
         $messageTitle = '',
-        $severity = \TYPO3\CMS\Core\Messaging\AbstractMessage::OK,
+        $severity = AbstractMessage::OK,
         $storeInSession = true
     ) {
-        if ($this->settings['verboseFlashMessages']) {
+        if (intval($this->settings['verboseFlashMessages']) ? ($severity >= AbstractMessage::OK) : true) {
             parent::addFlashMessage($messageBody, $messageTitle, $severity, $storeInSession);
         }
     }

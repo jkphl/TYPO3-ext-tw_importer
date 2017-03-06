@@ -194,5 +194,4 @@ class OpenDocumentFormatFile extends AbstractFile
 
         return $cells;
     }
-
 }

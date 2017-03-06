@@ -52,4 +52,11 @@ interface FileInterface
      * @return int Number of imported records
      */
     public function processFile($extensionKey, $filePath, $mapping, Database $database, &$skippedColumns = []);
+
+    /**
+     * Set the adapter configuration
+     *
+     * @param array $config Adapter configuration
+     */
+    public function setConfig(array $config);
 }

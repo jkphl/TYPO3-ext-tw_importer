@@ -46,21 +46,21 @@ abstract class AbstractImportable extends AbstractEntity
     /**
      * Hidden record
      *
-     * @var \boolean
+     * @var boolean
      */
     protected $hidden;
 
     /**
      * Deleted record
      *
-     * @var \boolean
+     * @var boolean
      */
     protected $deleted;
 
     /**
      * Multivalue delimiter
      *
-     * @var \string
+     * @var string
      */
     const SPLIT_DELIM = '|';
 
@@ -71,38 +71,27 @@ abstract class AbstractImportable extends AbstractEntity
      */
     const MAIN_LANGUAGE = 'en';
 
-
-    /************************************************************************************************
-     * PUBLIC METHODS
-     ***********************************************************************************************/
-
-
-    /**
-     * Can be overwritten to clean up models / tables etc. before the actual import starts
-     *
-     * @param array $data
-     * @param array $mapping
-     * @param $suffix
-     * @param array $extConfig
-     */
-    public function prepareImport(array $data, array $mapping, $suffix, $extConfig = array())
-    {
-        // TODO: parent->prepareImport should not be called for each child but just once for the parent itself..
-    }
-
     /**
      * Set the values from import data
      *
-     * @param \array $data Import data
-     * @param \array $mapping Column mapping
-     * @param \string $suffix Language suffix
-     * @param \array $languageSuffices All language suffices
-     * @param \array $extConfig Additional configuration here
-     * @return \boolean Success
+     * @param array $data Import data
+     * @param array $mapping Column mapping
+     * @param string $suffix Language suffix
+     * @param array $languageSuffices All language suffices
+     * @param array $extConfig Additional configuration here
+     * @param int $level Import hierarchy level
+     * @return boolean Success
      */
-    public function import(array $data, array $mapping, $suffix = null, $languageSuffices = [], $extConfig = [])
-    {
+    public function import(
+        array $data,
+        array $mapping,
+        $suffix = null,
+        $languageSuffices = [],
+        array $extConfig = [],
+        $level = 0
+    ) {
         $className = get_class($this);
+        $this->setImport(time());
 
         // Run through each column configuration
         foreach ($mapping as $column => $config) {
@@ -132,7 +121,7 @@ abstract class AbstractImportable extends AbstractEntity
                 }
 
                 // Prepare the column value
-                $columnValue = $this->_prepareValue(strval($data[$column]), $columnConfig);
+                $columnValue = $this->prepareValue(strval($data[$column]), $columnConfig);
                 $columnOrigValue = null;
                 $columnTranslated = GeneralUtility::underscoredToUpperCamelCase($columnConfig['column']);
 
@@ -151,7 +140,7 @@ abstract class AbstractImportable extends AbstractEntity
                             $columnConfig['column']));
                         $origColumn = preg_replace("%\_$suffix$%", '_'.self::MAIN_LANGUAGE, $column);
                         $columnOrigValue = (($suffix == self::MAIN_LANGUAGE) || !array_key_exists($origColumn,
-                                $data)) ? null : $this->_prepareValue(strval($data[$origColumn]), $columnConfig);
+                                $data)) ? null : $this->prepareValue(strval($data[$origColumn]), $columnConfig);
                     }
                 }
 
@@ -171,7 +160,7 @@ abstract class AbstractImportable extends AbstractEntity
         }
 
         // Finalize the import
-        $this->_finalizeImport();
+        $this->finalizeImport();
 
         return true;
     }
@@ -179,7 +168,7 @@ abstract class AbstractImportable extends AbstractEntity
     /**
      * Return the import date
      *
-     * @return \int                        Import date
+     * @return \int Import date
      */
     public function getImport()
     {
@@ -199,7 +188,7 @@ abstract class AbstractImportable extends AbstractEntity
     /**
      * Return the hidden state
      *
-     * @return \boolean
+     * @return boolean
      */
     public function getHidden()
     {
@@ -209,7 +198,7 @@ abstract class AbstractImportable extends AbstractEntity
     /**
      * Set the hidden state
      *
-     * @param \boolean $hidden Hidden
+     * @param boolean $hidden Hidden
      */
     public function setHidden($hidden)
     {
@@ -219,7 +208,7 @@ abstract class AbstractImportable extends AbstractEntity
     /**
      * Return the deleted state
      *
-     * @return \boolean
+     * @return boolean
      */
     public function getDeleted()
     {
@@ -229,7 +218,7 @@ abstract class AbstractImportable extends AbstractEntity
     /**
      * Set the deleted state
      *
-     * @param \boolean $deleted Deleted
+     * @param boolean $deleted Deleted
      */
     public function setDeleted($deleted)
     {
@@ -243,15 +232,15 @@ abstract class AbstractImportable extends AbstractEntity
     /**
      * Import property objects
      *
-     * @param \string $property Property
-     * @param \string $identifiers Object identifiers
-     * @param \string $origIdentifiers Original language object identifiers
-     * @param \string $identifierProperty Identifier property
-     * @param \string $model Model class name
-     * @param \string $repository Repository class name
-     * @param \boolean $identifierAndPid Find objects by identfier and PID
+     * @param string $property Property
+     * @param string $identifiers Object identifiers
+     * @param string $origIdentifiers Original language object identifiers
+     * @param string $identifierProperty Identifier property
+     * @param string $model Model class name
+     * @param string $repository Repository class name
+     * @param boolean $identifierAndPid Find objects by identfier and PID
      */
-    protected function _importPropertyObjects(
+    protected function importPropertyObjects(
         $property,
         $identifiers,
         $origIdentifiers,
@@ -355,7 +344,7 @@ abstract class AbstractImportable extends AbstractEntity
      *
      * @return void
      */
-    protected function _finalizeImport()
+    protected function finalizeImport()
     {
     }
 
@@ -366,7 +355,7 @@ abstract class AbstractImportable extends AbstractEntity
      * @param array $config Column configuration
      * @return string                Prepared value
      */
-    protected function _prepareValue($value, array $config)
+    protected function prepareValue($value, array $config)
     {
         // Float conversion
         if (isset($config['floatval']) && $config['floatval']) {
@@ -393,7 +382,7 @@ abstract class AbstractImportable extends AbstractEntity
 
         // Boolean conversion
         if (isset($config['boolean']) && $config['boolean']) {
-            $value = !!floatval($this->_prepareValue($value, array('floatval' => true)));
+            $value = !!floatval($this->prepareValue($value, array('floatval' => true)));
         }
 
         // Date conversion
