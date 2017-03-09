@@ -138,7 +138,7 @@ class Object
         $repository = $this->objectManager->get($modelConfig['repository']);
 
         // 1: Always try to find an existing object for the default language first, we need it anyway
-        $object = $repository->findOneByIdentifierAndPid($importId, null);
+        $object = $repository->findOneByIdentifierAndPid($importId, null, true, true);
         $status = self::STATUS_UPDATE;
 
         // 2: If the requested language is the default language (or the table doesn't support localization), (create and) return the object
@@ -175,6 +175,8 @@ class Object
             );
             $status = self::STATUS_CREATE;
             $this->persistenceManager->persistAll();
+        } else {
+            $translatedObject->setDeleted(false);
         }
 
         return [$translatedObject, $status];

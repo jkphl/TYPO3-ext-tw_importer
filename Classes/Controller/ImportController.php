@@ -89,9 +89,9 @@ class ImportController extends ActionController implements LoggerInterface
         $messageBody,
         $messageTitle = '',
         $severity = AbstractMessage::OK,
-        $storeInSession = true
+        $storeInSession = false
     ) {
-        if (intval($this->settings['verboseFlashMessages']) ? ($severity >= AbstractMessage::OK) : true) {
+        if (intval($this->settings['verboseFlashMessages']) || ($severity >= AbstractMessage::OK)) {
             parent::addFlashMessage($messageBody, $messageTitle, $severity, $storeInSession);
         }
     }

@@ -5,7 +5,7 @@
  *
  * @category Jkphl
  * @package Jkphl\Rdfalite
- * @subpackage Tollwerk\TwImporter\Domain\Repository
+ * @subpackage Tollwerk\TwImporter\Utility
  * @author Joschi Kuphal <joschi@tollwerk.de> / @jkphl
  * @copyright Copyright © 2017 Joschi Kuphal <joschi@tollwerk.de> / @jkphl
  * @license http://opensource.org/licenses/MIT The MIT License (MIT)
@@ -34,14 +34,28 @@
  *  CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  ***********************************************************************************/
 
-namespace Tollwerk\TwImporter\Domain\Repository;
-
-use TYPO3\CMS\Extbase\Persistence\RepositoryInterface;
+namespace Tollwerk\TwImporter\Utility;
 
 /**
- * Translatable repository interface
+ * Import finalizer interface
  */
-interface TranslatableRepositoryInterface extends RepositoryInterface
+interface ImportFinalizerInterface
 {
-
+    /**
+     * Import service constructor
+     *
+     * @param array $settings Settings
+     * @param array $languageSuffices Language suffices
+     * @param LoggerInterface $logger Logger
+     * @param $importStart Import start timestamp
+     * @param array $parameters Parameters
+     * @return
+     */
+    public static function finalizeImport(
+        array $settings,
+        array $languageSuffices,
+        LoggerInterface $logger,
+        $importStart,
+        $parameters = []
+    );
 }

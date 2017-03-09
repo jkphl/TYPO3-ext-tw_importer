@@ -126,30 +126,38 @@ abstract class AbstractImportableRepository extends AbstractEnhancedRepository
      * Return all records not modified since a particular timestamp
      *
      * @param int $timestamp Timestamp
+     * @param array $conditions Additional conditions
      * @return QueryResultInterface Records older than the timestamp
      */
-    public function findOlderThan($timestamp)
+    public function findOlderThan($timestamp, array $conditions = [])
     {
         $query = $this->createQuery();
         $query->getQuerySettings()
             ->setRespectStoragePage(false)
             ->setIgnoreEnableFields(true)
             ->setIncludeDeleted(false);
-        return $query->matching($query->lessThan('import', intval($timestamp)))->execute();
+
+        $constraints = [$query->lessThan('import', intval($timestamp))];
+        foreach ($conditions as $property => $value) {
+            $constraints[] = $query->equals($property, $value);
+        }
+
+        return $query->matching($query->logicalAnd($constraints))->execute();
     }
 
     /**
      * Delete all records not modified since a particular timestamp
      *
-     * @param $timestamp
-     * @return int
+     * @param int $timestamp Timestamp
+     * @param array $conditions Additional conditions
+     * @return int Number of deleted records
      */
-    public function deleteOlderThan($timestamp)
+    public function deleteOlderThan($timestamp, array $conditions = [])
     {
         $deleted = 0;
 
         /** @var AbstractImportable $object */
-        foreach ($this->findOlderThan($timestamp) as $object) {
+        foreach ($this->findOlderThan($timestamp, $conditions) as $object) {
             $this->remove($object);
             ++$deleted;
         }

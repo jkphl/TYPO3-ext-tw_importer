@@ -92,6 +92,7 @@ abstract class AbstractImportable extends AbstractEntity
     ) {
         $className = get_class($this);
         $this->setImport(time());
+        $this->setDeleted(false);
 
         // Run through each column configuration
         foreach ($mapping as $column => $config) {

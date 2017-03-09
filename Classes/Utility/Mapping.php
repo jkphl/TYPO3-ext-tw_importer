@@ -119,6 +119,18 @@ class Mapping
     }
 
     /**
+     * Return the list of finalizers after an import
+     *
+     * @param string $extensionKey Extension key
+     * @return array Finalizer classes
+     */
+    public function getFinalizers($extensionKey)
+    {
+        return isset($GLOBALS['TYPO3_CONF_VARS']['EXTCONF']['tw_importer']['registeredImports'][$extensionKey]['finalize']) ?
+            $GLOBALS['TYPO3_CONF_VARS']['EXTCONF']['tw_importer']['registeredImports'][$extensionKey]['finalize'] : [];
+    }
+
+    /**
      * Check the hierarchy pre-conditions
      *
      * @param array $record Record

@@ -152,13 +152,29 @@ class ImportService
         }
 
         // Purge repositories
-        foreach ($this->mappingUtility->getPurgeRepositories($extensionKey) as $repositoryClass) {
+        foreach ($this->mappingUtility->getPurgeRepositories($extensionKey) as $repositoryClass => $purgeConditions) {
             $repository = $this->objectManager->get($repositoryClass);
             if ($repository instanceof AbstractImportableRepository) {
-                $purged = $repository->deleteOlderThan($importStart);
+                $purgeConditions = ($purgeConditions === true) ? [] : (array)$purgeConditions;
+                $purged = $repository->deleteOlderThan($importStart, $purgeConditions);
                 $this->logger->log(
                     'Purged '.$purged.' objects from repository '.$repositoryClass,
                     FlashMessage::NOTICE
+                );
+            }
+        }
+
+        foreach ($this->mappingUtility->getFinalizers($extensionKey) as $finalizerClass => $finalizeParameters) {
+            if ((new \ReflectionClass($finalizerClass))->implementsInterface(ImportFinalizerInterface::class)) {
+                call_user_func_array(
+                    [$finalizerClass, 'finalizeImport'],
+                    [
+                        $this->settings,
+                        $this->languageSuffices,
+                        $this->logger,
+                        $importStart,
+                        (array)$finalizeParameters
+                    ]
                 );
             }
         }
