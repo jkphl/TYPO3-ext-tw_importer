@@ -282,6 +282,9 @@ class ImportService
                 }
             }
 
+            // Finalize the import
+            $object->finalizeImport();
+
             // Else: Log a skip message
         } else {
             $this->logger->log(

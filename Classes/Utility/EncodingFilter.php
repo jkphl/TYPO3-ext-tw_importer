@@ -5,7 +5,7 @@
  *
  * @category Jkphl
  * @package Jkphl\Rdfalite
- * @subpackage Tollwerk\TwImporter\Domain\Repository
+ * @subpackage Tollwerk\TwImporter\Utility
  * @author Joschi Kuphal <joschi@tollwerk.de> / @jkphl
  * @copyright Copyright © 2017 Joschi Kuphal <joschi@tollwerk.de> / @jkphl
  * @license http://opensource.org/licenses/MIT The MIT License (MIT)
@@ -34,14 +34,36 @@
  *  CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  ***********************************************************************************/
 
-namespace Tollwerk\TwImporter\Domain\Repository;
-
-use TYPO3\CMS\Extbase\Persistence\RepositoryInterface;
+namespace Tollwerk\TwImporter\Utility;
 
 /**
- * Translatable repository interface
+ * Stream encoding filter
  */
-interface TranslatableRepositoryInterface extends RepositoryInterface
+class EncodingFilter extends \php_user_filter
 {
+    /**
+     * Source encoding
+     *
+     * @var string
+     */
+    protected $encoding;
 
+    /**
+     * Filter data
+     *
+     * @param resource $in
+     * @param resource $out
+     * @param int $consumed
+     * @param bool $closing
+     * @return int
+     */
+    public function filter($in, $out, &$consumed, $closing)
+    {
+        while ($bucket = stream_bucket_make_writeable($in)) {
+            $bucket->data = mb_convert_encoding($bucket->data, 'UTF-8', $this->encoding);
+            $consumed += $bucket->datalen;
+            stream_bucket_append($out, $bucket);
+        }
+        return PSFS_PASS_ON;
+    }
 }

@@ -160,9 +160,6 @@ abstract class AbstractImportable extends AbstractEntity
             }
         }
 
-        // Finalize the import
-        $this->finalizeImport();
-
         return true;
     }
 
@@ -225,10 +222,6 @@ abstract class AbstractImportable extends AbstractEntity
     {
         $this->deleted = $deleted;
     }
-
-    /************************************************************************************************
-     * PRIVATE METHODS
-     ***********************************************************************************************/
 
     /**
      * Import property objects
@@ -345,7 +338,7 @@ abstract class AbstractImportable extends AbstractEntity
      *
      * @return void
      */
-    protected function finalizeImport()
+    public function finalizeImport()
     {
     }
 
