@@ -106,7 +106,7 @@ class Database
      */
     public function getTemporaryRecords($extensionKey)
     {
-        $temporaryRecordRes = $this->database->exec_SELECTquery('*', self::getTableName($extensionKey));
+        $temporaryRecordRes = $this->database->exec_SELECTquery('*', self::getTableName($extensionKey), '');
         if ($temporaryRecordRes) {
             while ($temporaryRecord = $this->database->sql_fetch_assoc($temporaryRecordRes)) {
                 yield $temporaryRecord;

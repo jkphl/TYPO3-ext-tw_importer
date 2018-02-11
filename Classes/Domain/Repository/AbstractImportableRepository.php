@@ -215,6 +215,7 @@ abstract class AbstractImportableRepository extends AbstractEnhancedRepository
         }
         array_filter($uids);
 
+        /** @var \TYPO3\CMS\Extbase\Persistence\Generic\Query $query */
         $query = $this->createQuery();
 
         // If there's particular number of results to be fetched
@@ -228,6 +229,7 @@ abstract class AbstractImportableRepository extends AbstractEnhancedRepository
         }
 
         // If a particular column is selected for sorting
+        $sortByField = false;
         if ($sortBy) {
 
             // Check if there's a asc / desc String
@@ -241,12 +243,13 @@ abstract class AbstractImportableRepository extends AbstractEnhancedRepository
 
             // Else sort by the given UIDs
         } else {
+            $sortByField = true;
             // Not supported by TYPO3, needs ugly hack instead
 // 			$query->setOrderings(array(
 // 				'FIND_IN_SET('.$this->_tablename.'.uid, "'.implode(',', $uids).'")' => \TYPO3\CMS\Extbase\Persistence\QueryInterface::ORDER_ASCENDING
 // 			));
 
-            $query->setOrderings($this->orderByField('uid', $uids));
+//            $query->setOrderings($this->orderByField('uid', $uids));
         }
 
         // Match the given UIDs only
@@ -257,6 +260,16 @@ abstract class AbstractImportableRepository extends AbstractEnhancedRepository
         // the query won't return anything in others than the default sys_language
         $query->getQuerySettings()->setRespectSysLanguage(false);
         $result = $query->execute();
+
+        // If the records should be ordered by uid
+        if ($sortByField === true) {
+            $records = array_fill_keys($uids, null);
+            foreach ($result as $record) {
+                $records[$record->getUid()] = $record;
+            }
+
+            $result = array_values($records);
+        }
 
         return $result;
     }
