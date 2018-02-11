@@ -1,0 +1,13 @@
+{
+    "name": "tollwerk/tw-importer",
+    "description": "TYPO3 multi-purpose import service for CSV and OpenOffice data files",
+    "type": "typo3-cms-extension",
+    "license": "GPL-2.0+",
+    "authors": [
+        {
+            "name": "Joschi Kuphal",
+            "email": "joschi@tollwerk.de"
+        }
+    ],
+    "require": {}
+}
