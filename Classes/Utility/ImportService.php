@@ -238,7 +238,17 @@ class ImportService
         $flashMessageIndent = str_repeat('---', $level);
         $importIdField = array_key_exists('importIdField', $modelConfig) ?
             $modelConfig['importIdField'] : 'tx_twimporter_id';
-        $importId = $record[$importIdField];
+
+        // If the import id is a compound key
+        if (is_array($importIdField)) {
+            $importId = md5(serialize(array_map(function ($importIdFieldFacet) use ($record) {
+                return empty($record[$importIdFieldFacet]) ? null : $record[$importIdFieldFacet];
+            }, $importIdField)));
+
+            // Else
+        } else {
+            $importId = empty($record[$importIdField]) ? null : $record[$importIdField];
+        }
 
         // If the pre-conditions are met
         if ($this->mappingUtility->checkHierarchyConditions($record, $modelConfig)) {
@@ -342,7 +352,6 @@ class ImportService
         $langSuffix,
         $parentObject = null
     ) {
-
         // Try to find the object by parent relation
         /** @var AbstractImportable $object */
         /** @var string $objectStatus */

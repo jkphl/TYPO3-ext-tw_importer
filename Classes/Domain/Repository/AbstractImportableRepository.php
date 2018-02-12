@@ -1,4 +1,5 @@
 <?php
+
 namespace Tollwerk\TwImporter\Domain\Repository;
 
 
@@ -30,7 +31,7 @@ namespace Tollwerk\TwImporter\Domain\Repository;
 
 use Tollwerk\TwImporter\Domain\Model\AbstractImportable;
 use TYPO3\CMS\Core\Database\DatabaseConnection;
-use \TYPO3\CMS\Core\Utility\GeneralUtility;
+use TYPO3\CMS\Core\Utility\GeneralUtility;
 use TYPO3\CMS\Extbase\DomainObject\AbstractEntity;
 use TYPO3\CMS\Extbase\Persistence\QueryInterface;
 use TYPO3\CMS\Extbase\Persistence\QueryResultInterface;
