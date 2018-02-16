@@ -36,6 +36,9 @@
             <trans-unit id="mod.buttons.import">
                 <source>Start import</source>
             </trans-unit>
+            <trans-unit id="mod.buttons.importing">
+                <source>Importing ...</source>
+            </trans-unit>
             <trans-unit id="mod.buttons.back">
                 <source>Back to configuration list</source>
             </trans-unit>

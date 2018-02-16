@@ -44,13 +44,17 @@
                             <tr>
                                 <td>{extensionKey}</td>
                                 <td>{import.title}</td>
-                                <td>TBD</td>
+                                <td>(TBD)</td>
                                 <td>
-                                    <f:link.action action="import" class="btn btn-default" controller="Import"
-                                                   arguments="{extensionKey: extensionKey}">
-                                        <f:translate
-                                            key="LLL:EXT:tw_importer/Resources/Private/Language/locallang_mod.xlf:mod.buttons.import"/>
-                                    </f:link.action>
+                                    <f:alias map="{importing: '{f:translate(key:\'LLL:EXT:tw_importer/Resources/Private/Language/locallang_mod.xlf:mod.buttons.importing\')}'}">
+                                        <f:link.action action="import" class="btn btn-default" controller="Import"
+                                                       arguments="{extensionKey: extensionKey}" additionalAttributes="{
+                                        onclick: 'this.className+=\' disabled\';this.innerText=\'{importing}\''
+                                                   }">
+                                            <f:translate
+                                                    key="LLL:EXT:tw_importer/Resources/Private/Language/locallang_mod.xlf:mod.buttons.import"/>
+                                        </f:link.action>
+                                    </f:alias>
                                 </td>
                             </tr>
                         </f:for>
