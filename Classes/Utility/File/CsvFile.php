@@ -83,6 +83,7 @@ class CsvFile extends AbstractFile
         $delimiter = isset($this->config['delimiter']) ? $this->config['delimiter'] : ',';
         $enclosure = isset($this->config['enclosure']) ? $this->config['enclosure'] : '"';
         $escape = isset($this->config['escape']) ? $this->config['escape'] : '\\';
+        $headers = !empty($this->config['headers']);
         $csvHandle = fopen($filePath, 'r');
 
         // If the file can be opened
@@ -103,6 +104,11 @@ class CsvFile extends AbstractFile
                 // If there are no columns defined: Consume the first row for them
                 if ($columns === null) {
                     $columns = $row;
+                    continue;
+
+                    // Else if the first row should be treated as column headers (and thus be skipped)
+                } elseif ($headers) {
+                    $headers = false;
                     continue;
                 }
 
