@@ -29,6 +29,7 @@ namespace Tollwerk\TwImporter\Controller;
 
 use Tollwerk\TwImporter\Utility\ImportService;
 use Tollwerk\TwImporter\Utility\LoggerInterface;
+use Tollwerk\TwImporter\Utility\Mapping;
 use Tollwerk\TwImporter\Utility\SysLanguages;
 use TYPO3\CMS\Core\Messaging\AbstractMessage;
 use TYPO3\CMS\Core\Messaging\FlashMessage;
@@ -103,7 +104,7 @@ class ImportController extends ActionController implements LoggerInterface
     {
         $this->view->assignMultiple(array(
             'languages' => $this->languageSuffices,
-            'registeredImports' => $GLOBALS['TYPO3_CONF_VARS']['EXTCONF']['tw_importer']['registeredImports']
+            'registeredImports' => Mapping::getAllExtensionImports()
         ));
     }
 
