@@ -38,14 +38,22 @@ abstract class AbstractEnhancedRepository extends Repository
     /**
      * Find multiple records by identifier
      *
-     * @param \array $uids List of identifiers
+     * @param mixed $uids Array or comma separated list of uids
+     * @param integer $page Offset for the query
+     * @param integer $itemsPerPage Limit for the query
+     * @param string $sortBy Field to order by. Please note: It's possible to attach |DESC or |ASC to the $sortBy string :-)
+     * @param string $ascDesc ASC / DESC or see \TYPO3\CMS\Extbase\Persistence\QueryInterface::ORDER_ASCENDING etc.
      * @return \array               Matching records
      */
-    public function findByUids(array $uids, $page = 0, $itemsPerPage = 0, $sortBy = false, $ascDesc = false)
+    public function findByUids($uids, $page = 0, $itemsPerPage = 0, $sortBy = null, $ascDesc = null)
     {
-        $uids = array_map('intval', array_filter($uids));
+        // Normalize the UID list
+        if (!is_array($uids)) {
+            $uids = GeneralUtility::trimExplode(',', $uids);
+        }
+        $uids = array_filter(array_map('intval', array_filter($uids)));
         if (!count($uids)) {
-            return array();
+            return [];
         }
 
         $query = $this->createQuery();

@@ -208,13 +208,16 @@ abstract class AbstractImportableRepository extends AbstractEnhancedRepository
      * @return object
      * @see https://forge.typo3.org/issues/14026
      */
-    public function findByUids($uids, $page = 0, $itemsPerPage = 0, $sortBy = false, $ascDesc = false)
+    public function findByUids($uids, $page = 0, $itemsPerPage = 0, $sortBy = null, $ascDesc = null)
     {
         // Normalize the UID list
         if (!is_array($uids)) {
             $uids = GeneralUtility::trimExplode(',', $uids);
         }
-        array_filter($uids);
+        $uids = array_filter(array_map('intval', array_filter($uids)));
+        if (!count($uids)) {
+            return [];
+        }
 
         /** @var \TYPO3\CMS\Extbase\Persistence\Generic\Query $query */
         $query = $this->createQuery();
