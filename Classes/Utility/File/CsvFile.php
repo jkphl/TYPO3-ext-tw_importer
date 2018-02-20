@@ -90,7 +90,7 @@ class CsvFile extends AbstractFile
         if ($csvHandle !== false) {
             // Install an encoding stream filter if necessary
             if (isset($this->config['encoding']) && (strtolower($this->config['encoding']) != 'utf-8')) {
-                $encodingClassName = 'EncodingFilter'.preg_replace_callback_array('/[a-z\+]/i', '', $this->config['encoding']);
+                $encodingClassName = 'EncodingFilter'.preg_replace('/[^a-z0-9]/i', '', $this->config['encoding']);
                 $encodingClassDefinition = 'class '.$encodingClassName.' extends '.EncodingFilter::class.'{protected $encoding = \''.$this->config['encoding'].'\';}';
                 eval($encodingClassDefinition);
 
