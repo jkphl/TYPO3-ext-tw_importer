@@ -41,7 +41,7 @@ abstract class AbstractEnhancedRepository extends Repository
      * @param \array $uids List of identifiers
      * @return \array               Matching records
      */
-    public function findByUids(array $uids)
+    public function findByUids(array $uids, $page = 0, $itemsPerPage = 0, $sortBy = false, $ascDesc = false)
     {
         $uids = array_map('intval', array_filter($uids));
         if (!count($uids)) {
