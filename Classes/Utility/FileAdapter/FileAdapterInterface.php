@@ -42,7 +42,9 @@ interface FileAdapterInterface
      * Import a file
      *
      * @param string $extensionKey Extension key
+     * @param string $importFile   Optional: Import file
+     *
      * @return int Number of imported records
      */
-    public function import($extensionKey);
+    public function import(string $extensionKey, string $importFile = null): int;
 }

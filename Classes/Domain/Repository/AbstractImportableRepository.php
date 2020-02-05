@@ -32,7 +32,11 @@ namespace Tollwerk\TwImporter\Domain\Repository;
 use Tollwerk\TwImporter\Domain\Model\AbstractImportable;
 use TYPO3\CMS\Core\Database\DatabaseConnection;
 use TYPO3\CMS\Core\Utility\GeneralUtility;
-use TYPO3\CMS\Extbase\DomainObject\AbstractEntity;
+use TYPO3\CMS\Extbase\Persistence\Exception\IllegalObjectTypeException;
+use TYPO3\CMS\Extbase\Persistence\Exception\InvalidQueryException;
+use TYPO3\CMS\Extbase\Persistence\Generic\Exception;
+use TYPO3\CMS\Extbase\Persistence\Generic\Exception\UnexpectedTypeException;
+use TYPO3\CMS\Extbase\Persistence\Generic\Query;
 use TYPO3\CMS\Extbase\Persistence\QueryInterface;
 use TYPO3\CMS\Extbase\Persistence\QueryResultInterface;
 
@@ -46,7 +50,7 @@ abstract class AbstractImportableRepository extends AbstractEnhancedRepository
      *
      * @var string
      */
-    protected $identifierColumn = 'tx_twimporter_id';
+    protected $identifierColumn = 'sku';
 
     /**
      * Return the import identifier column name
@@ -65,7 +69,7 @@ abstract class AbstractImportableRepository extends AbstractEnhancedRepository
      */
     public function findAllUids()
     {
-        $query = $this->createQuery();
+        $query          = $this->createQuery();
         $sysLanguageUid = $GLOBALS['TSFE']->sys_language_uid ?: 0;
 
         $statement = '
@@ -87,24 +91,27 @@ abstract class AbstractImportableRepository extends AbstractEnhancedRepository
     /**
      * Find an object by identifier and PID
      *
-     * @param string $identifier Identifier
-     * @param int $pid PID
+     * @param string $identifier       Identifier
+     * @param int $pid                 PID
      * @param bool $ignoreEnableFields Ignore the enable fields
-     * @param bool $includeDeleted Include deleted records
-     * @return AbstractEntity Object
+     * @param bool $includeDeleted     Include deleted records
+     *
+     * @return AbstractImportable
      */
     public function findOneByIdentifierAndPid(
         $identifier,
         $pid = null,
         $ignoreEnableFields = false,
         $includeDeleted = false
-    ) {
+    ): ?AbstractImportable {
+
         $query = $this->createQuery();
+
         $query->getQuerySettings()
-            ->setRespectStoragePage(false)
-            ->setRespectSysLanguage(false)
-            ->setIgnoreEnableFields($ignoreEnableFields)
-            ->setIncludeDeleted($includeDeleted);
+              ->setRespectStoragePage(false)
+              ->setRespectSysLanguage(false)
+              ->setIgnoreEnableFields($ignoreEnableFields)
+              ->setIncludeDeleted($includeDeleted);
 
         $constraints = array(
             $query->equals($this->identifierColumn, $identifier),
@@ -120,38 +127,19 @@ abstract class AbstractImportableRepository extends AbstractEnhancedRepository
         }
 
         $query->matching($query->logicalAnd($constraints));
+
         return $query->execute()->getFirst();
-    }
-
-    /**
-     * Return all records not modified since a particular timestamp
-     *
-     * @param int $timestamp Timestamp
-     * @param array $conditions Additional conditions
-     * @return QueryResultInterface Records older than the timestamp
-     */
-    public function findOlderThan($timestamp, array $conditions = [])
-    {
-        $query = $this->createQuery();
-        $query->getQuerySettings()
-            ->setRespectStoragePage(false)
-            ->setIgnoreEnableFields(true)
-            ->setIncludeDeleted(false);
-
-        $constraints = [$query->lessThan('import', intval($timestamp))];
-        foreach ($conditions as $property => $value) {
-            $constraints[] = $query->equals($property, $value);
-        }
-
-        return $query->matching($query->logicalAnd($constraints))->execute();
     }
 
     /**
      * Delete all records not modified since a particular timestamp
      *
-     * @param int $timestamp Timestamp
+     * @param int $timestamp    Timestamp
      * @param array $conditions Additional conditions
+     *
      * @return int Number of deleted records
+     * @throws IllegalObjectTypeException
+     * @throws InvalidQueryException
      */
     public function deleteOlderThan($timestamp, array $conditions = [])
     {
@@ -169,43 +157,58 @@ abstract class AbstractImportableRepository extends AbstractEnhancedRepository
     }
 
     /**
+     * Return all records not modified since a particular timestamp
+     *
+     * @param int $timestamp    Timestamp
+     * @param array $conditions Additional conditions
+     *
+     * @return QueryResultInterface Records older than the timestamp
+     * @throws InvalidQueryException
+     */
+    public function findOlderThan($timestamp, array $conditions = [])
+    {
+        $query = $this->createQuery();
+        $query->getQuerySettings()
+              ->setRespectStoragePage(false)
+              ->setIgnoreEnableFields(true)
+              ->setIncludeDeleted(false);
+
+        $constraints = [$query->lessThan('import', intval($timestamp))];
+        foreach ($conditions as $property => $value) {
+            $constraints[] = $query->equals($property, $value);
+        }
+
+        return $query->matching($query->logicalAnd($constraints))->execute();
+    }
+
+    /**
      * Remove orphaned translations
      *
-     * @return \boolean                Success
+     * @return boolean                Success
      */
     public function removeOrphanedTranslations()
     {
         /* @var $DB DatabaseConnection */
-        $DB =& $GLOBALS['TYPO3_DB'];
+        $DB  =& $GLOBALS['TYPO3_DB'];
         $sql = 'UPDATE `'.$this->_tablename.'` AS `t1` INNER JOIN `'.$this->_tablename.'` AS `t2` ON `t1`.`l10n_parent` = `t2`.`uid` AND `t2`.`deleted` = 1 SET `t1`.`deleted` = 1';
-        return !!$DB->sql_query($sql);
-    }
 
-    /**
-     * Returns an array with ordering arrays for sorting by given values (e.g. uid=3, uid=6, uid=1, uid=2)
-     *
-     * @param string $field The field name / property for sorting
-     * @param unknown $values Arrays with values for this field name / property.
-     * @return array            Orderings for extbase query
-     */
-    protected function orderByField($field, $values)
-    {
-        $orderings = array();
-        foreach ($values as $value) {
-            $orderings[$field.'='.$value] = QueryInterface::ORDER_DESCENDING;
-        }
-        return $orderings;
+        return !!$DB->sql_query($sql);
     }
 
     /**
      * Find by multiple UIDs
      *
-     * @param mixed $uids Array or comma separated list of uids
-     * @param integer $page Offset for the query
+     * @param mixed $uids           Array or comma separated list of uids
+     * @param integer $page         Offset for the query
      * @param integer $itemsPerPage Limit for the query
-     * @param string $sortBy Field to order by. Please note: It's possible to attach |DESC or |ASC to the $sortBy string :-)
-     * @param string $ascDesc ASC / DESC or see \TYPO3\CMS\Extbase\Persistence\QueryInterface::ORDER_ASCENDING etc.
+     * @param string $sortBy        Field to order by. Please note: It's possible to attach |DESC or |ASC to the
+     *                              $sortBy string :-)
+     * @param string $ascDesc       ASC / DESC or see \TYPO3\CMS\Extbase\Persistence\QueryInterface::ORDER_ASCENDING
+     *                              etc.
+     *
      * @return object
+     * @throws Exception
+     * @throws UnexpectedTypeException
      * @see https://forge.typo3.org/issues/14026
      */
     public function findByUids($uids, $page = 0, $itemsPerPage = 0, $sortBy = null, $ascDesc = null)
@@ -219,7 +222,7 @@ abstract class AbstractImportableRepository extends AbstractEnhancedRepository
             return [];
         }
 
-        /** @var \TYPO3\CMS\Extbase\Persistence\Generic\Query $query */
+        /** @var Query $query */
         $query = $this->createQuery();
 
         // If there's particular number of results to be fetched
@@ -238,7 +241,7 @@ abstract class AbstractImportableRepository extends AbstractEnhancedRepository
 
             // Check if there's a asc / desc String
             $sortByExplode = explode('|', $sortBy);
-            $sortByField = $sortByExplode[0];
+            $sortByField   = $sortByExplode[0];
             $sortByAscDesc = (count($sortByExplode) > 1 ? $sortByExplode[1] : false);
 
             $query->setOrderings(array(
@@ -276,5 +279,23 @@ abstract class AbstractImportableRepository extends AbstractEnhancedRepository
         }
 
         return $result;
+    }
+
+    /**
+     * Returns an array with ordering arrays for sorting by given values (e.g. uid=3, uid=6, uid=1, uid=2)
+     *
+     * @param string $field   The field name / property for sorting
+     * @param unknown $values Arrays with values for this field name / property.
+     *
+     * @return array            Orderings for extbase query
+     */
+    protected function orderByField($field, $values)
+    {
+        $orderings = array();
+        foreach ($values as $value) {
+            $orderings[$field.'='.$value] = QueryInterface::ORDER_DESCENDING;
+        }
+
+        return $orderings;
     }
 }

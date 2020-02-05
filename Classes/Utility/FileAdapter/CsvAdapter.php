@@ -3,12 +3,12 @@
 /**
  * Fischer Automobile
  *
- * @category Jkphl
- * @package Jkphl\Rdfalite
+ * @category   Jkphl
+ * @package    Jkphl\Rdfalite
  * @subpackage Tollwerk\TwImporter\Utility\FileAdapter
- * @author Joschi Kuphal <joschi@tollwerk.de> / @jkphl
- * @copyright Copyright © 2017 Joschi Kuphal <joschi@tollwerk.de> / @jkphl
- * @license http://opensource.org/licenses/MIT The MIT License (MIT)
+ * @author     Joschi Kuphal <joschi@tollwerk.de> / @jkphl
+ * @copyright  Copyright © 2017 Joschi Kuphal <joschi@tollwerk.de> / @jkphl
+ * @license    http://opensource.org/licenses/MIT The MIT License (MIT)
  */
 
 /***********************************************************************************
@@ -36,13 +36,14 @@
 
 namespace Tollwerk\TwImporter\Utility\FileAdapter;
 
+use ErrorException;
 use Tollwerk\TwImporter\Utility\File\CsvFile;
 use TYPO3\CMS\Core\Messaging\FlashMessage;
 
 /**
  * CSV Adapter
  *
- * @package Jkphl\Rdfalite
+ * @package    Jkphl\Rdfalite
  * @subpackage Tollwerk\TwImporter\Utility\FileAdapter
  */
 class CsvAdapter extends AbstractFileAdapter
@@ -62,12 +63,26 @@ class CsvAdapter extends AbstractFileAdapter
     const NAME = 'csv';
 
     /**
+     * Inject the CSV file utility
+     *
+     * @param CsvFile $fileUtility CSV file utility
+     */
+    public function injectFileUtility(CsvFile $fileUtility)
+    {
+        $this->fileUtility = $fileUtility;
+        $this->fileUtility->setConfig($this->config);
+    }
+
+    /**
      * Import a file
      *
      * @param string $extensionKey Extension key
+     * @param string $importFile   Optional: Import file
+     *
      * @return int Number of imported records
+     * @throws ErrorException
      */
-    public function import($extensionKey)
+    public function import(string $extensionKey, string $importFile = null): int
     {
         // Find import directory
         $importDirectory = $this->fileUtility->validateDirectory(self::BASE_DIRECTORY.$extensionKey);
@@ -86,9 +101,10 @@ class CsvAdapter extends AbstractFileAdapter
         $this->logger->log('Created temporary import table "'.$importTableName.'"', FlashMessage::NOTICE);
 
         // Parse the import file into the prepared temporary import table
+
         $this->logger->log('Reading import file ...', FlashMessage::OK);
         $skippedColumns = [];
-        $rowCount = $this->fileUtility->processFile(
+        $rowCount       = $this->fileUtility->processFile(
             $extensionKey,
             $importFile,
             $mapping,
@@ -103,16 +119,5 @@ class CsvAdapter extends AbstractFileAdapter
         }
 
         return $rowCount;
-    }
-
-    /**
-     * Inject the CSV file utility
-     *
-     * @param CsvFile $fileUtility CSV file utility
-     */
-    public function injectFileUtility(CsvFile $fileUtility)
-    {
-        $this->fileUtility = $fileUtility;
-        $this->fileUtility->setConfig($this->config);
     }
 }

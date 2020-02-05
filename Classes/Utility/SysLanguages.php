@@ -26,7 +26,10 @@ namespace Tollwerk\TwImporter\Utility;
  *  This copyright notice MUST APPEAR in all copies of the script!
  ***************************************************************/
 
+use FluidTYPO3\Vhs\ViewHelpers\DebugViewHelper;
 use \TYPO3\CMS\Core\Utility\GeneralUtility;
+use TYPO3\CMS\Core\Database\ConnectionPool;
+use TYPO3\CMS\Extbase\Utility\DebuggerUtility;
 
 /**
  * Utility class for getting bits of information via ajax
@@ -42,25 +45,29 @@ class SysLanguages
 
     /**
      * Return a list of all registered system language suffices
-     * @var string $languages
+     *
+     * @var array $languages
      *
      * @return array            Language suffices
      */
-    public static function suffices(array $languages)
+    public static function suffices(array $languages): array
     {
         if (self::$_languageSuffices === null) {
-            self::$_languageSuffices = array(0 => $languages['defaultSuffix']);
+            self::$_languageSuffices = [0 => $languages['defaultSuffix']];
 
-            // Gather all languages
-            $languageResult = $GLOBALS['TYPO3_DB']->exec_SELECTquery(
-                'uid,language_isocode',
-                'sys_language',
-                (strlen($languages['translate']) ? 'uid IN ('.$languages['translate'].')' : '')
-            );
+            $queryBuilder = GeneralUtility::makeInstance(ConnectionPool::class)
+                                          ->getQueryBuilderForTable('sys_language');
 
-            if ($languageResult && strlen($languages['translate'])) {
-                while ($language = $GLOBALS['TYPO3_DB']->sql_fetch_assoc($languageResult)) {
-                    self::$_languageSuffices[intval($language['uid'])] = $language['language_isocode'];
+            $queryBuilder->select('sys_language.uid')
+                ->addSelectLiteral('sys_language.language_isocode')
+                ->from('sys_language')
+                ->where((strlen($languages['translate']) ? 'uid IN ('.$languages['translate'].')' : ''));
+
+            $results = $queryBuilder->execute()->fetchAll();
+
+            if ($results && strlen($languages['translate'])) {
+                foreach($results as $result){
+                    self::$_languageSuffices[intval($result['uid'])] = $result['language_isocode'];
                 }
             }
         }

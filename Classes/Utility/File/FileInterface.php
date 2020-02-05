@@ -36,10 +36,13 @@ interface FileInterface
     /**
      * Return the import file path
      *
-     * @param string $directory Import directory
+     * @param string $directory       Import directory
+     * @param string|null $importFile Optional: Import File
+     *
      * @return string Import file path
+     * @throws \ErrorException If the import file is invalid
      */
-    public function getImportFile($directory);
+    public function getImportFile($directory, string $importFile = null): string;
 
     /**
      * Process the import file

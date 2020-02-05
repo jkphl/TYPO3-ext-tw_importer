@@ -26,7 +26,10 @@
 
 namespace Tollwerk\TwImporter\Utility;
 
-use TYPO3\CMS\Core\Database\DatabaseConnection;
+use TYPO3\CMS\Core\Database\ConnectionPool;
+use TYPO3\CMS\Core\Utility\DebugUtility;
+use TYPO3\CMS\Core\Utility\GeneralUtility;
+use TYPO3\CMS\Extbase\Utility\DebuggerUtility;
 
 /**
  * Database utility
@@ -52,6 +55,7 @@ class Database
      * Create and return the temporary database table name for import
      *
      * @param string $extensionKey Extension key
+     *
      * @return string Temporary table name
      */
     public static function getTableName($extensionKey)
@@ -63,23 +67,27 @@ class Database
      * Create a temporary import table
      *
      * @param string $extensionKey Extension key
-     * @param array $mapping Column mapping
+     * @param array $mapping       Column mapping
+     *
      * @return string The name of the temporary table
      * @throws \ErrorException If the table cannot be created
      */
     public function prepareTemporaryImportTable($extensionKey, $mapping)
     {
-        // Preparing temporary database table
-        if (!$this->database->sql_query('DROP TABLE IF EXISTS `'.self::getTableName($extensionKey).'`')) {
-            throw new \ErrorException('Couldn\'t prepare database (already exists)');
-        }
+        $connection = GeneralUtility::makeInstance(ConnectionPool::class)->getConnectionByName('Default');
 
-        // If the table cannot be created
-        if (!$this->database->sql_query(
-            'CREATE TABLE `'.self::getTableName($extensionKey).'` ( `'.implode('` TEXT NULL DEFAULT NULL, `',
-                array_keys($mapping)).'` TEXT NULL DEFAULT NULL) ENGINE = MyISAM')
-        ) {
-            throw new \ErrorException('Couldn\'t prepare database (cannot create table)');
+        $createQuery = 'CREATE TABLE '.self::getTableName($extensionKey).' (';
+        $createQuery .= implode(', ', array_map(function($column) use ($connection) {
+            return $connection->quoteIdentifier($column).' TEXT NULL DEFAULT NULL';
+        }, array_keys($mapping)));
+        $createQuery .= ') ENGINE = MyISAM';
+
+        $connection->query('DROP TABLE IF EXISTS '.self::getTableName($extensionKey));
+
+        try {
+            $connection->query($createQuery);
+        } catch (\Exception $e) {
+            DebugUtility::debug($e->getMessage());
         }
 
         return self::getTableName($extensionKey);
@@ -89,28 +97,29 @@ class Database
      * Insert a row into the temporary table
      *
      * @param string $extensionKey Extension key
-     * @param array $row Row data
+     * @param array $row           Row data
+     *
      * @return mixed
      */
     public function insertRow($extensionKey, array $row)
     {
-        $result = $this->database->exec_INSERTquery(self::getTableName($extensionKey), $row);
-        return $result;
+        $queryBuilder = GeneralUtility::makeInstance(ConnectionPool::class)->getQueryBuilderForTable(self::getTableName($extensionKey));
+        $affectedRows = $queryBuilder->insert(self::getTableName($extensionKey))->values($row)->execute();
+
+        return $affectedRows;
     }
 
     /**
      * Iterate over all temporary records
      *
      * @param string $extensionKey Extension key
-     * @return \Generator Temporary records
+     *
+     * @return Array $row
      */
     public function getTemporaryRecords($extensionKey)
     {
-        $temporaryRecordRes = $this->database->exec_SELECTquery('*', self::getTableName($extensionKey), '');
-        if ($temporaryRecordRes) {
-            while ($temporaryRecord = $this->database->sql_fetch_assoc($temporaryRecordRes)) {
-                yield $temporaryRecord;
-            }
-        }
+        $queryBuilder = GeneralUtility::makeInstance(ConnectionPool::class)->getQueryBuilderForTable(self::getTableName($extensionKey));
+        $statement = $queryBuilder->select('*')->from(self::getTableName($extensionKey))->execute();
+        return $statement->fetchAll();
     }
 }

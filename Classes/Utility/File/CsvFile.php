@@ -3,12 +3,12 @@
 /**
  * Fischer Automobile
  *
- * @category Jkphl
- * @package Jkphl\Rdfalite
+ * @category   Jkphl
+ * @package    Jkphl\Rdfalite
  * @subpackage Tollwerk\TwImporter\Utility\File
- * @author Joschi Kuphal <joschi@tollwerk.de> / @jkphl
- * @copyright Copyright © 2017 Joschi Kuphal <joschi@tollwerk.de> / @jkphl
- * @license http://opensource.org/licenses/MIT The MIT License (MIT)
+ * @author     Joschi Kuphal <joschi@tollwerk.de> / @jkphl
+ * @copyright  Copyright © 2017 Joschi Kuphal <joschi@tollwerk.de> / @jkphl
+ * @license    http://opensource.org/licenses/MIT The MIT License (MIT)
  */
 
 /***********************************************************************************
@@ -49,12 +49,14 @@ class CsvFile extends AbstractFile
      *
      * Returns the first usable .csv file inside the import $directory
      *
-     * @param string $directory Import directory
+     * @param string $directory       Import directory
+     * @param string|null $importFile Optional: Import File
+     *
      * @return string Import file path
      * @throws \ErrorException If there's no suitable file in the directory
      * @throws \ErrorException If the import file is invalid
      */
-    public function getImportFile($directory)
+    public function getImportFile($directory, string $importFile = null): string
     {
         // Get all available .ods files in the $directory
         $importFiles = glob($directory.DIRECTORY_SEPARATOR.'*.csv');
@@ -63,34 +65,36 @@ class CsvFile extends AbstractFile
         if (!count($importFiles)) {
             throw new \ErrorException('No import file available. Quitting');
         }
+
         return $importFiles[0];
     }
 
     /**
      * Process the import file
      *
-     * @param string $extensionKey Extension key
-     * @param string $filePath File path
-     * @param array $mapping Column mapping
-     * @param Database $database Database utility
+     * @param string $extensionKey  Extension key
+     * @param string $filePath      File path
+     * @param array $mapping        Column mapping
+     * @param Database $database    Database utility
      * @param array $skippedColumns Skipped columns (set by reference)
+     *
      * @return int Number of imported records
      */
     public function processFile($extensionKey, $filePath, $mapping, Database $database, &$skippedColumns = [])
     {
-        $rowCount = 0;
-        $columns = isset($this->config['columns']) ? (array)$this->config['columns'] : null;
+        $rowCount  = 0;
+        $columns   = isset($this->config['columns']) ? (array)$this->config['columns'] : null;
         $delimiter = isset($this->config['delimiter']) ? $this->config['delimiter'] : ',';
         $enclosure = isset($this->config['enclosure']) ? $this->config['enclosure'] : '"';
-        $escape = isset($this->config['escape']) ? $this->config['escape'] : '\\';
-        $headers = !empty($this->config['headers']);
+        $escape    = isset($this->config['escape']) ? $this->config['escape'] : '\\';
+        $headers   = !empty($this->config['headers']);
         $csvHandle = fopen($filePath, 'r');
 
         // If the file can be opened
         if ($csvHandle !== false) {
             // Install an encoding stream filter if necessary
             if (isset($this->config['encoding']) && (strtolower($this->config['encoding']) != 'utf-8')) {
-                $encodingClassName = 'EncodingFilter'.preg_replace('/[^a-z0-9]/i', '', $this->config['encoding']);
+                $encodingClassName       = 'EncodingFilter'.preg_replace('/[^a-z0-9]/i', '', $this->config['encoding']);
                 $encodingClassDefinition = 'class '.$encodingClassName.' extends '.EncodingFilter::class.'{protected $encoding = \''.$this->config['encoding'].'\';}';
                 eval($encodingClassDefinition);
 
@@ -99,7 +103,7 @@ class CsvFile extends AbstractFile
             }
 
             // Run through all rows
-            while(($row = fgetcsv($csvHandle, 1048576, $delimiter, $enclosure, $escape)) !== false) {
+            while (($row = fgetcsv($csvHandle, 1048576, $delimiter, $enclosure, $escape)) !== false) {
 
                 // If there are no columns defined: Consume the first row for them
                 if ($columns === null) {

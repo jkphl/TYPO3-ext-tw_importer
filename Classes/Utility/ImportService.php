@@ -26,13 +26,19 @@
 
 namespace Tollwerk\TwImporter\Utility;
 
+use ErrorException;
+use InvalidArgumentException;
+use ReflectionClass;
+use ReflectionException;
 use Tollwerk\TwImporter\Domain\Model\AbstractImportable;
 use Tollwerk\TwImporter\Domain\Model\TranslatableInterface;
 use Tollwerk\TwImporter\Domain\Repository\AbstractImportableRepository;
 use Tollwerk\TwImporter\Utility\FileAdapter\FileAdapterInterface;
 use TYPO3\CMS\Core\Messaging\FlashMessage;
-use TYPO3\CMS\Extbase\Mvc\Exception\InvalidActionNameException;
 use TYPO3\CMS\Extbase\Object\ObjectManager;
+use TYPO3\CMS\Extbase\Persistence\Exception\IllegalObjectTypeException;
+use TYPO3\CMS\Extbase\Persistence\Exception\InvalidQueryException;
+use TYPO3\CMS\Extbase\Persistence\Exception\UnknownObjectException;
 
 /**
  * Import service
@@ -40,111 +46,115 @@ use TYPO3\CMS\Extbase\Object\ObjectManager;
 class ImportService
 {
     /**
+     * Extension mappings
+     *
+     * @var array[]
+     */
+    protected static $mappings = [];
+    /**
      * Settings
      *
      * @var array
      */
     protected $settings;
-
     /**
      * Object manager
      *
      * @var ObjectManager
      */
     protected $objectManager;
-
     /**
      * Database utility
      *
      * @var Database
      */
     protected $dbUtility;
-
     /**
      * Mapping utility
      *
      * @var Mapping
      */
     protected $mappingUtility;
-
-    /**
-     * Object utility
-     *
-     * @var Object
-     */
-    protected $objectUtility;
-
     /**
      * Language suffices
      *
      * @var array
      */
     protected $languageSuffices = null;
-
     /**
      * Logger
      *
      * @var LoggerInterface
      */
     protected $logger;
-
     /**
-     * Extension mappings
+     * Current master object
      *
-     * @var array[]
+     * @var AbstractImportable
      */
-    protected static $mappings = [];
+    protected $currentMasterObject = null;
 
     /**
      * Import service constructor
      *
-     * @param array $settings Settings
+     * @param array $settings         Settings
      * @param array $languageSuffices Language suffices
      */
     public function __construct(array $settings, array $languageSuffices, LoggerInterface $logger)
     {
-        $this->settings = $settings;
+        $this->settings         = $settings;
         $this->languageSuffices = $languageSuffices;
-        $this->logger = $logger;
+        $this->logger           = $logger;
     }
 
     /**
      * Run an extension import
      *
-     * @param string $extensionKey Extension key
-     * @throws InvalidActionNameException If there's no mapping for the given extension
-     * @throws InvalidActionNameException If there's no file adapter configured
+     * @param string $extensionKey    Extension key
+     * @param string|null $importFile Optional: Import file
+     *
+     * @throws ErrorException
+     * @throws IllegalObjectTypeException
+     * @throws InvalidQueryException
+     * @throws ReflectionException
+     * @throws UnknownObjectException
      */
-    public function run($extensionKey)
+    public function run(string $extensionKey, string $importFile = null)
     {
         ini_set('max_execution_time', 0);
         $this->logger->log('Starting import for extension "'.$extensionKey.'"', FlashMessage::INFO);
+        $this->logger->stage(LoggerInterface::STAGE_PREPARATION);
+
         $importStart = time();
 
         // If there's no mapping for the given extension
         if (!isset($GLOBALS['TYPO3_CONF_VARS']['EXTCONF']['tw_importer']['registeredImports'][$extensionKey])) {
-            throw new \InvalidArgumentException(
+            throw new InvalidArgumentException(
                 sprintf('No import configuration for "%s"', $extensionKey),
                 1488382570
             );
         }
 
-        $fileAdapterNameConfig = $this->mappingUtility->getAdapter($extensionKey);
         /** @var FileAdapterInterface $fileAdapter */
-        $fileAdapter = $this->objectManager->get(FileAdapterFactory::class)->getAdapterByName(
-            $fileAdapterNameConfig,
-            $this->logger
-        );
-        $records = $fileAdapter->import($extensionKey);
+        $fileAdapterNameConfig = $this->mappingUtility->getAdapter($extensionKey);
+        $fileAdapter           = $this->objectManager->get(FileAdapterFactory::class)
+                                                     ->getAdapterByName($fileAdapterNameConfig, $this->logger);
+        $records               = $fileAdapter->import($extensionKey, $importFile);
+
         $this->logger->log('Extracted '.$records.' records from import file', FlashMessage::OK);
+        $this->logger->stage(LoggerInterface::STAGE_IMPORTING);
 
-//      // TODO: implement filterRecords() (Flag for updating / not updating in import file etc.)
-
+        // TODO: implement filterRecords() (Flag for updating / not updating in import file etc.)
+        $this->logger->stage(LoggerInterface::STAGE_IDLE);
         $this->importTemporaryRecords($extensionKey);
 
         // TODO: move import file to archive before further processing (if(settings->archive))
 
-        foreach ($this->objectUtility->getUpdatedObjectsCounter() as $counterClass => $counterSum) {
+        $this->logger->stage(LoggerInterface::STAGE_FINALIZING);
+
+        foreach (
+            $this->objectManager->get(ItemUtility::class)->getUpdatedObjectsCounter() as $counterClass => $counterSum
+        ) {
             $this->logger->log(
                 'Created / updated '.$counterSum.' objects of class '.$counterClass,
                 FlashMessage::NOTICE
@@ -156,7 +166,7 @@ class ImportService
             $repository = $this->objectManager->get($repositoryClass);
             if ($repository instanceof AbstractImportableRepository) {
                 $purgeConditions = ($purgeConditions === true) ? [] : (array)$purgeConditions;
-                $purged = $repository->deleteOlderThan($importStart, $purgeConditions);
+                $purged          = $repository->deleteOlderThan($importStart, $purgeConditions);
                 $this->logger->log(
                     'Purged '.$purged.' objects from repository '.$repositoryClass,
                     FlashMessage::NOTICE
@@ -164,37 +174,276 @@ class ImportService
             }
         }
 
+        // Call finalizers
         foreach ($this->mappingUtility->getFinalizers($extensionKey) as $finalizerClass => $finalizeParameters) {
-            if ((new \ReflectionClass($finalizerClass))->implementsInterface(ImportFinalizerInterface::class)) {
+            if ((new ReflectionClass($finalizerClass))->implementsInterface(ImportFinalizerInterface::class)) {
                 call_user_func_array(
                     [$finalizerClass, 'finalizeImport'],
-                    [
-                        $this->settings,
-                        $this->languageSuffices,
-                        $this->logger,
-                        $importStart,
-                        (array)$finalizeParameters
-                    ]
+                    [$this->settings, $this->languageSuffices, $this->logger, $importStart, (array)$finalizeParameters]
                 );
             }
         }
 
         $this->logger->log('Done with import for extension key: '.$extensionKey, FlashMessage::OK);
+        $this->logger->stage(LoggerInterface::STAGE_FINISHED);
     }
 
     /**
      * Import the temporary records into the production database
      *
      * @param string $extensionKey Extension key
+     *
+     * @throws ErrorException
+     * @throws ReflectionException
+     * @throws IllegalObjectTypeException
+     * @throws UnknownObjectException
      */
     protected function importTemporaryRecords($extensionKey)
     {
-        $hierarchy = $this->mappingUtility->getHierarchy($extensionKey);
+        $this->currentMasterObject = null;
+        $hierarchy                 = $this->mappingUtility->getHierarchy($extensionKey);
+        $temporaryRecords          = $this->dbUtility->getTemporaryRecords($extensionKey);
+
+        $this->logger->stage(LoggerInterface::STAGE_IMPORTING);
+        $this->logger->count(count($temporaryRecords));
 
         // Iterate over all temporary records
-        foreach ($this->dbUtility->getTemporaryRecords($extensionKey) as $temporaryRecord) {
-            $this->importTemporaryRecord($extensionKey, $temporaryRecord, key($hierarchy), current($hierarchy), 0);
+        foreach ($temporaryRecords as $step => $temporaryRecord) {
+            $recordCache = $this->mappingUtility->buildRecordCache($extensionKey, $temporaryRecord);
+            $this->importTemporaryRecord(
+                $extensionKey,
+                $temporaryRecord,
+                key($hierarchy),
+                current($hierarchy),
+                $recordCache,
+                0
+            );
+            $this->logger->step($step);
         }
+
+        if ($this->currentMasterObject) {
+            $this->currentMasterObject->finalizeImport($recordCache);
+            $this->currentMasterObject = null;
+        }
+    }
+
+    /**
+     * Import a temporary record
+     *
+     * @param string $extensionKey             Extension key
+     * @param array $record                    Temporary record
+     * @param string $modelClass               Model class
+     * @param array $modelConfig               Model configuration
+     * @param array $recordCache               Internal record cache
+     * @param int $level                       Indentation level
+     * @param AbstractImportable $parentObject Parent object
+     *
+     * @throws ErrorException
+     * @throws IllegalObjectTypeException
+     * @throws ReflectionException
+     * @throws UnknownObjectException
+     */
+    protected function importTemporaryRecord(
+        string $extensionKey,
+        array $record,
+        string $modelClass,
+        array $modelConfig,
+        array $recordCache,
+        int $level = 0,
+        AbstractImportable $parentObject = null
+    ) {
+        $importIdField = $modelConfig['importIdField'] ?? 'tx_twimporter_id';
+
+        // If the import id is a compound key
+        if (is_array($importIdField)) {
+            $importId = md5(serialize(array_map(function($importIdFieldFacet) use ($record) {
+                return empty($record[$importIdFieldFacet]) ? null : $record[$importIdFieldFacet];
+            }, $importIdField)));
+        } else {
+            $importId = empty($record[$importIdField]) ? null : $record[$importIdField];
+        }
+
+        // If the pre-conditions for creating a new master object are met
+        if ($this->mappingUtility->checkHierarchyConditions($record, $modelConfig)) {
+
+            // If this is going to be a top-level object and there's a previous master object: Finalize & close
+            if (!$parentObject && ($this->currentMasterObject instanceof AbstractImportable)) {
+                $this->currentMasterObject->finalizeImport($recordCache);
+                $this->currentMasterObject = null;
+            }
+
+            $sysLanguage     = -1;
+            $langSuffix      = null;
+            $reflectionClass = new ReflectionClass($modelClass);
+
+            // If the model supports translations
+            if ($reflectionClass->implementsInterface(TranslatableInterface::class)) {
+                // TODO: Run with translatable records
+
+                // Else: Non-translateable record
+            } else {
+                $object = $this->importSimpleTemporaryRecord(
+                    $extensionKey,
+                    $record,
+                    $modelClass,
+                    $modelConfig,
+                    $level,
+                    $importId,
+                    $sysLanguage,
+                    $langSuffix,
+                    $parentObject
+                );
+            }
+
+            // If this is a top-level object: Register as master object
+            if (!$parentObject) {
+                $this->currentMasterObject = $object;
+            }
+
+            // Recursively call for child models
+            $this->processPendentObjects($extensionKey, $record, $modelConfig, $recordCache, $level + 1, $object);
+
+            // If this is not a top-level object: Finalize
+            if ($parentObject) {
+                $object->finalizeImport($recordCache);
+            }
+
+            // Else: If there's no parent but a current master object
+        } elseif (!$parentObject && ($this->currentMasterObject instanceof AbstractImportable)) {
+
+            // Recursively call for child models
+            $this->processPendentObjects(
+                $extensionKey,
+                $record,
+                $modelConfig,
+                $recordCache,
+                $level + 1,
+                $this->currentMasterObject
+            );
+
+            // Else: Log a skip message
+        } else {
+            $this->logger->log(
+                sprintf('Pre-conditions not met for record "%s", skipping ...', $importId),
+                FlashMessage::WARNING
+            );
+        }
+    }
+
+    /**
+     * Process pendent objects
+     *
+     * @param string $extensionKey             Extension key
+     * @param array $record                    Temporary record
+     * @param array $modelConfig               Model configuration
+     * @param array $recordCache               Internal record cache
+     * @param int $level                       Indentation level
+     * @param AbstractImportable $parentObject Parent object
+     *
+     * @throws ErrorException
+     * @throws IllegalObjectTypeException
+     * @throws ReflectionException
+     * @throws UnknownObjectException
+     */
+    protected function processPendentObjects(
+        string $extensionKey,
+        array $record,
+        array $modelConfig,
+        array $recordCache,
+        int $level,
+        AbstractImportable $parentObject
+    ) {
+        if (!empty($modelConfig['children']) && is_array($modelConfig['children'])) {
+            foreach ($modelConfig['children'] as $childModelClass => $childModelConfig) {
+                $this->importTemporaryRecord(
+                    $extensionKey,
+                    $record,
+                    $childModelClass,
+                    $childModelConfig,
+                    $recordCache,
+                    $level + 1,
+                    $parentObject
+                );
+            }
+        }
+    }
+
+    /**
+     * Import a simple temporary record
+     *
+     * @param string $extensionKey             Extension key
+     * @param array $record                    Translatable temporary record
+     * @param string $modelClass               Model class
+     * @param array $modelConfig               Model configuration
+     * @param int $level                       Indentation level
+     * @param string $importId                 Unique import identifier
+     * @param int $sysLanguage                 System language (-1 for all languages / non-translatable)
+     * @param string $langSuffix               Language suffix
+     * @param AbstractImportable $parentObject Parent object
+     *
+     * @return AbstractImportable Imported object
+     * @throws ErrorException
+     * @throws ReflectionException
+     * @throws IllegalObjectTypeException
+     * @throws UnknownObjectException
+     */
+    protected function importSimpleTemporaryRecord(
+        $extensionKey,
+        array $record,
+        $modelClass,
+        array $modelConfig,
+        $level,
+        $importId,
+        $sysLanguage,
+        $langSuffix,
+        $parentObject = null
+    ) {
+        // Try to find the object by parent relation
+        /** @var AbstractImportable $object */
+        /** @var string $objectStatus */
+        list($object, $objectStatus) = $this->objectManager->get(ItemUtility::class)->findOrCreateImportableObject(
+            $modelClass,
+            $modelConfig,
+            $importId,
+            $sysLanguage
+        );
+
+        // If the object properties can successfully be updated
+        if ($object->import(
+            $record,
+            $this->getMapping($extensionKey),
+            $langSuffix,
+            $this->languageSuffices,
+            [],
+            $level)) {
+            // Persist the updated object
+            $this->objectManager->get(ItemUtility::class)->update($modelClass, $modelConfig, $object);
+        }
+
+        // Optionally register with the parent object
+        if ($parentObject instanceof AbstractImportable) {
+            $this->objectManager->get(ItemUtility::class)
+                                ->registerWithParentObject($object, $modelConfig, $parentObject);
+        }
+
+        return $object;
+    }
+
+    /**
+     * Get an extension mapping
+     *
+     * @param string $extensionKey Extension key
+     *
+     * @return array Extension mapping
+     * @throws ErrorException
+     */
+    protected function getMapping($extensionKey)
+    {
+        if (!array_key_exists($extensionKey, self::$mappings)) {
+            self::$mappings[$extensionKey] = $this->mappingUtility->getMapping($extensionKey);
+        }
+
+        return self::$mappings[$extensionKey];
     }
 
     /**
@@ -218,100 +467,24 @@ class ImportService
     }
 
     /**
-     * Import a temporary record
+     * Inject the database utility
      *
-     * @param string $extensionKey Extension key
-     * @param array $record Temporary record
-     * @param string $modelClass Model class
-     * @param array $modelConfig Model configuration
-     * @param int $level Indentation level
-     * @param AbstractImportable $parentObject Parent object
+     * @param Database $dbUtility Database utility
      */
-    protected function importTemporaryRecord(
-        $extensionKey,
-        array $record,
-        $modelClass,
-        array $modelConfig,
-        $level = 0,
-        AbstractImportable $parentObject = null
-    ) {
-        $flashMessageIndent = str_repeat('---', $level);
-        $importIdField = array_key_exists('importIdField', $modelConfig) ?
-            $modelConfig['importIdField'] : 'tx_twimporter_id';
-
-        // If the import id is a compound key
-        if (is_array($importIdField)) {
-            $importId = md5(serialize(array_map(function ($importIdFieldFacet) use ($record) {
-                return empty($record[$importIdFieldFacet]) ? null : $record[$importIdFieldFacet];
-            }, $importIdField)));
-
-            // Else
-        } else {
-            $importId = empty($record[$importIdField]) ? null : $record[$importIdField];
-        }
-
-        // If the pre-conditions are met
-        if ($this->mappingUtility->checkHierarchyConditions($record, $modelConfig)) {
-            $sysLanguage = -1;
-            $langSuffix = null;
-
-            // If the model supports translations
-            $reflectionClass = new \ReflectionClass($modelClass);
-            if ($reflectionClass->implementsInterface(TranslatableInterface::class)) {
-                // TODO: Run with translatable records
-//                $this->importTranslatableTemporaryRecord($extensionKey, $record, $modelClass, $modelConfig, $level);
-//                $sysLanguage = -1;
-//                $langSuffix = null;
-
-                // Else: Import as simple record
-            } else {
-                $object = $this->importSimpleTemporaryRecord(
-                    $extensionKey,
-                    $record,
-                    $modelClass,
-                    $modelConfig,
-                    $level,
-                    $importId,
-                    $sysLanguage,
-                    $langSuffix,
-                    $parentObject
-                );
-            }
-
-            // Recursively call for child models
-            if (!empty($modelConfig['children']) && is_array($modelConfig['children'])) {
-                foreach ($modelConfig['children'] as $childModelClass => $childModelConfig) {
-                    $this->importTemporaryRecord(
-                        $extensionKey,
-                        $record,
-                        $childModelClass,
-                        $childModelConfig,
-                        $level + 1,
-                        $object
-                    );
-                }
-            }
-
-            // Finalize the import
-            $object->finalizeImport();
-
-            // Else: Log a skip message
-        } else {
-            $this->logger->log(
-                sprintf('Pre-conditions not met for record "%s", skipping ...', $importId),
-                FlashMessage::WARNING
-            );
-        }
+    public function injectDbUtility(Database $dbUtility)
+    {
+        $this->dbUtility = $dbUtility;
     }
 
     /**
      * Import a translatable temporary record
      *
      * @param string $extensionKey Extension key
-     * @param array $record Translatable temporary record
-     * @param string $modelClass Model class
-     * @param array $modelConfig Model configuration
-     * @param int $level Indentation level
+     * @param array $record        Translatable temporary record
+     * @param string $modelClass   Model class
+     * @param array $modelConfig   Model configuration
+     * @param int $level           Indentation level
+     *
      * @internal param array $hierarchy Record hierarchy
      */
     protected function importTranslatableTemporaryRecord(
@@ -325,95 +498,5 @@ class ImportService
         foreach ($this->languageSuffices as $sysLanguage => $langSuffix) {
             // TODO: Call importSimpleTemporaryRecord() for each language
         }
-    }
-
-    /**
-     * Import a simple temporary record
-     *
-     * @param string $extensionKey Extension key
-     * @param array $record Translatable temporary record
-     * @param string $modelClass Model class
-     * @param array $modelConfig Model configuration
-     * @param int $level Indentation level
-     * @param string $importId Unique import identifier
-     * @param int $sysLanguage System language (-1 for all languages / non-translatable)
-     * @param string $langSuffix Language suffix
-     * @param AbstractImportable $parentObject Parent object
-     * @return AbstractImportable Imported object
-     */
-    protected function importSimpleTemporaryRecord(
-        $extensionKey,
-        array $record,
-        $modelClass,
-        array $modelConfig,
-        $level,
-        $importId,
-        $sysLanguage,
-        $langSuffix,
-        $parentObject = null
-    ) {
-        // Try to find the object by parent relation
-        /** @var AbstractImportable $object */
-        /** @var string $objectStatus */
-        list($object, $objectStatus) = $this->objectUtility->findOrCreateImportableObject(
-            $modelClass,
-            $modelConfig,
-            $importId,
-            $sysLanguage
-        );
-
-        // If the object properties can successfully be updated
-        if ($object->import(
-            $record,
-            $this->getMapping($extensionKey),
-            $langSuffix,
-            $this->languageSuffices,
-            [],
-            $level)
-        ) {
-            // Persist the updated object
-            $this->objectUtility->update($modelClass, $modelConfig, $object);
-        }
-
-        // Optionally register with the parent object
-        if ($parentObject instanceof AbstractImportable) {
-            $this->objectUtility->registerWithParentObject($object, $modelConfig, $parentObject);
-        }
-
-        return $object;
-    }
-
-    /**
-     * Inject the object utility
-     *
-     * @param Object $objectUtility Object utility
-     */
-    public function injectObjectUtility(Object $objectUtility)
-    {
-        $this->objectUtility = $objectUtility;
-    }
-
-    /**
-     * Inject the database utility
-     *
-     * @param Database $dbUtility Database utility
-     */
-    public function injectDbUtility(Database $dbUtility)
-    {
-        $this->dbUtility = $dbUtility;
-    }
-
-    /**
-     * Get an extension mapping
-     *
-     * @param string $extensionKey Extension key
-     * @return array Extension mapping
-     */
-    protected function getMapping($extensionKey)
-    {
-        if (!array_key_exists($extensionKey, self::$mappings)) {
-            self::$mappings[$extensionKey] = $this->mappingUtility->getMapping($extensionKey);
-        }
-        return self::$mappings[$extensionKey];
     }
 }

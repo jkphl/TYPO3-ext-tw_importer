@@ -26,6 +26,9 @@
 
 namespace Tollwerk\TwImporter\Utility;
 
+use Closure;
+use ErrorException;
+
 /**
  * Mapping utility
  *
@@ -39,34 +42,12 @@ class Mapping
      * @var array[]
      */
     protected static $imports = [];
-
     /**
-     * Return a particular extension import configuration
+     * Cache columns
      *
-     * @param string $extensionKey Extension key
-     * @return array Extension mapping configuration
-     * @throws \ErrorException If the mapping doesn't exist
-     * @throws \ErrorException If the mapping is invalid
+     * @var array
      */
-    public static function getExtensionImport($extensionKey)
-    {
-        if (!array_key_exists($extensionKey, self::$imports)) {
-            if (empty($GLOBALS['TYPO3_CONF_VARS']['EXTCONF']['tw_importer']['registeredImports'][$extensionKey])) {
-                throw new \ErrorException("Could not get extension import configuration. Check \$GLOBALS['TYPO3_CONF_VARS']['EXTCONF']['tw_importer']['registeredImports']['".$extensionKey."'] in your ext_localconf.php");
-            } else {
-                $mapping = $GLOBALS['TYPO3_CONF_VARS']['EXTCONF']['tw_importer']['registeredImports'][$extensionKey];
-                if ($mapping instanceof \Closure) {
-                    $mapping = $mapping();
-                }
-                if (!is_array($mapping)) {
-                    throw new \ErrorException("Extension import configuration is invalid. Check \$GLOBALS['TYPO3_CONF_VARS']['EXTCONF']['tw_importer']['registeredImports']['".$extensionKey."'] in your ext_localconf.php");
-                }
-                self::$imports[$extensionKey] = $mapping;
-            }
-        }
-
-        return self::$imports[$extensionKey];
-    }
+    protected static $cacheColumns = null;
 
     /**
      * Return all extension import configurations
@@ -78,38 +59,69 @@ class Mapping
         foreach (array_keys($GLOBALS['TYPO3_CONF_VARS']['EXTCONF']['tw_importer']['registeredImports']) as $extensionKey) {
             try {
                 self::getExtensionImport($extensionKey);
-            } catch (\ErrorException $e) {
+            } catch (ErrorException $e) {
                 echo $e->getMessage();
                 // Skip
             }
         }
+
         return self::$imports;
+    }
+
+    /**
+     * Return a particular extension import configuration
+     *
+     * @param string $extensionKey Extension key
+     *
+     * @return array Extension mapping configuration
+     * @throws ErrorException If the mapping doesn't exist
+     * @throws ErrorException If the mapping is invalid
+     */
+    public static function getExtensionImport($extensionKey)
+    {
+        if (!array_key_exists($extensionKey, self::$imports)) {
+            if (empty($GLOBALS['TYPO3_CONF_VARS']['EXTCONF']['tw_importer']['registeredImports'][$extensionKey])) {
+                throw new ErrorException("Could not get extension import configuration. Check \$GLOBALS['TYPO3_CONF_VARS']['EXTCONF']['tw_importer']['registeredImports']['".$extensionKey."'] in your ext_localconf.php");
+            } else {
+                $mapping = $GLOBALS['TYPO3_CONF_VARS']['EXTCONF']['tw_importer']['registeredImports'][$extensionKey];
+                if ($mapping instanceof Closure) {
+                    $mapping = $mapping();
+                }
+                if (!is_array($mapping)) {
+                    throw new ErrorException("Extension import configuration is invalid. Check \$GLOBALS['TYPO3_CONF_VARS']['EXTCONF']['tw_importer']['registeredImports']['".$extensionKey."'] in your ext_localconf.php");
+                }
+                self::$imports[$extensionKey] = $mapping;
+            }
+        }
+
+        return self::$imports[$extensionKey];
     }
 
     /**
      * Return the file adapter for a particular extension
      *
      * @param string $extensionKey Extension key
-     * @return string File adapter
-     * @throws \ErrorException If the mapping doesn't exist
-     * @throws \ErrorException If the mapping is empty
+     *
+     * @return array File adapter
+     * @throws ErrorException If the mapping doesn't exist
+     * @throws ErrorException If the mapping is empty
      */
-    public function getAdapter($extensionKey)
+    public function getAdapter($extensionKey): array
     {
         $import = self::getExtensionImport($extensionKey);
 
         if (!isset($import['adapter'])) {
-            throw new \ErrorException("Could not get file adapter. Check \$GLOBALS['TYPO3_CONF_VARS']['EXTCONF']['tw_importer']['registeredImports']['".$extensionKey."']['adapter'] in your ext_localconf.php");
+            throw new ErrorException("Could not get file adapter. Check \$GLOBALS['TYPO3_CONF_VARS']['EXTCONF']['tw_importer']['registeredImports']['".$extensionKey."']['adapter'] in your ext_localconf.php");
         }
 
         $adapter = $import['adapter'];
 
-        if (!strlen($adapter)) {
-            throw new \ErrorException("The file adapter is empty! Check \$GLOBALS['TYPO3_CONF_VARS']['EXTCONF']['tw_importer']['registeredImports']['".$extensionKey."']['adapter'] in your ext_localconf.php");
+        if (!$adapter) {
+            throw new ErrorException("The file adapter is empty! Check \$GLOBALS['TYPO3_CONF_VARS']['EXTCONF']['tw_importer']['registeredImports']['".$extensionKey."']['adapter'] in your ext_localconf.php");
         }
 
         return [
-            'name' => $adapter,
+            'name'   => $adapter,
             'config' => isset($import['config']) ? (array)$import['config'] : [],
         ];
     }
@@ -118,22 +130,23 @@ class Mapping
      * Return the mapping for a particular extension
      *
      * @param string $extensionKey Extension key
+     *
      * @return array Mapping
-     * @throws \ErrorException If the mapping doesn't exist
-     * @throws \ErrorException If the mapping is empty
+     * @throws ErrorException If the mapping doesn't exist
+     * @throws ErrorException If the mapping is empty
      */
-    public function getMapping($extensionKey)
+    public function getMapping($extensionKey): ?array
     {
         $import = self::getExtensionImport($extensionKey);
 
         if (!isset($import['mapping'])) {
-            throw new \ErrorException("Could not get mapping. Check \$GLOBALS['TYPO3_CONF_VARS']['EXTCONF']['tw_importer']['registeredImports']['".$extensionKey."']['mapping'] in your ext_localconf.php");
+            throw new ErrorException("Could not get mapping. Check \$GLOBALS['TYPO3_CONF_VARS']['EXTCONF']['tw_importer']['registeredImports']['".$extensionKey."']['mapping'] in your ext_localconf.php");
         }
 
         $mapping = $import['mapping'];
 
         if (!count($mapping)) {
-            throw new \ErrorException("The mapping is empty! Check \$GLOBALS['TYPO3_CONF_VARS']['EXTCONF']['tw_importer']['registeredImports']['".$extensionKey."']['mapping'] in your ext_localconf.php");
+            throw new ErrorException("The mapping is empty! Check \$GLOBALS['TYPO3_CONF_VARS']['EXTCONF']['tw_importer']['registeredImports']['".$extensionKey."']['mapping'] in your ext_localconf.php");
         }
 
         return $mapping;
@@ -143,36 +156,85 @@ class Mapping
      * Return the mapping hierarchy
      *
      * @param string $extensionKey Extension key
+     *
      * @return array Mapping hierarchy
-     * @throws \ErrorException If the mapping hierarchy doesn't exist
-     * @throws \ErrorException If the mapping hierarchy is empty
+     * @throws ErrorException If the mapping hierarchy doesn't exist
+     * @throws ErrorException If the mapping hierarchy is empty
      */
     public function getHierarchy($extensionKey)
     {
         $import = self::getExtensionImport($extensionKey);
 
         if (!isset($import['hierarchy'])) {
-            throw new \ErrorException("Could not get hierarchy. Check \$GLOBALS['TYPO3_CONF_VARS']['EXTCONF']['tw_importer']['registeredImports']['".$extensionKey."']['hierarchy'] in your ext_localconf.php");
+            throw new ErrorException("Could not get hierarchy. Check \$GLOBALS['TYPO3_CONF_VARS']['EXTCONF']['tw_importer']['registeredImports']['".$extensionKey."']['hierarchy'] in your ext_localconf.php");
         }
 
         $hierarchy = $import['hierarchy'];
 
         if (!count($hierarchy)) {
-            throw new \ErrorException("The hierarchy is empty! Check \$GLOBALS['TYPO3_CONF_VARS']['EXTCONF']['tw_importer']['registeredImports']['".$extensionKey."']['hierarchy'] in your ext_localconf.php");
+            throw new ErrorException("The hierarchy is empty! Check \$GLOBALS['TYPO3_CONF_VARS']['EXTCONF']['tw_importer']['registeredImports']['".$extensionKey."']['hierarchy'] in your ext_localconf.php");
         }
 
         return $hierarchy;
     }
 
     /**
+     * Return all internal cache columns
+     *
+     * @param string $extensionKey Extension key
+     *
+     * @return array Cache columns
+     * @throws ErrorException
+     */
+    protected function cacheColumns($extensionKey): array
+    {
+        if (self::$cacheColumns === null) {
+            self::$cacheColumns = [];
+            foreach (self::getExtensionImport($extensionKey)['mapping'] as $columnName => $mappings) {
+                if (is_array($mappings)) {
+                    foreach ($mappings as $mappingConfig) {
+                        if (is_string($mappingConfig)) {
+                            self::$cacheColumns[$columnName] = $mappingConfig;
+                        }
+                    }
+                }
+            }
+        }
+
+        return self::$cacheColumns;
+    }
+
+    /**
+     * Build and return an internal record cache
+     *
+     * @param string $extensionKey Extension key
+     * @param array $record        Temporary record
+     *
+     * @return array Internal record cache
+     * @throws ErrorException
+     */
+    public function buildRecordCache(string $extensionKey, array $record): array
+    {
+        $cache = [];
+        foreach (array_intersect_key($this->cacheColumns($extensionKey), $record) as $columnName => $cacheKey) {
+            $cache[$cacheKey] = $record[$columnName];
+        }
+
+        return $cache;
+    }
+
+    /**
      * Return the list of repositories to purge after an import
      *
      * @param string $extensionKey Extension key
+     *
      * @return array Repositories to purge
+     * @throws ErrorException
      */
     public function getPurgeRepositories($extensionKey)
     {
         $import = self::getExtensionImport($extensionKey);
+
         return isset($import['purge']) ? $import['purge'] : [];
     }
 
@@ -180,19 +242,23 @@ class Mapping
      * Return the list of finalizers after an import
      *
      * @param string $extensionKey Extension key
+     *
      * @return array Finalizer classes
+     * @throws ErrorException
      */
     public function getFinalizers($extensionKey)
     {
         $import = self::getExtensionImport($extensionKey);
+
         return isset($import['finalize']) ? $import['finalize'] : [];
     }
 
     /**
      * Check the hierarchy pre-conditions
      *
-     * @param array $record Record
+     * @param array $record     Record
      * @param array $objectConf Object configuration
+     *
      * @return boolean Hierarchy pre-conditions match
      */
     public function checkHierarchyConditions($record, $objectConf)

@@ -27,19 +27,25 @@
 
 namespace Tollwerk\TwImporter\Controller;
 
+use ErrorException;
+use Exception;
+use InvalidArgumentException;
+use ReflectionException;
 use Tollwerk\TwImporter\Utility\ImportService;
-use Tollwerk\TwImporter\Utility\LoggerInterface;
 use Tollwerk\TwImporter\Utility\Mapping;
 use Tollwerk\TwImporter\Utility\SysLanguages;
 use TYPO3\CMS\Core\Messaging\AbstractMessage;
 use TYPO3\CMS\Core\Messaging\FlashMessage;
 use TYPO3\CMS\Extbase\Configuration\BackendConfigurationManager;
 use TYPO3\CMS\Extbase\Mvc\Controller\ActionController;
+use TYPO3\CMS\Extbase\Persistence\Exception\IllegalObjectTypeException;
+use TYPO3\CMS\Extbase\Persistence\Exception\InvalidQueryException;
+use TYPO3\CMS\Extbase\Persistence\Exception\UnknownObjectException;
 
 /**
  * Import controller (backend module)
  */
-class ImportController extends ActionController implements LoggerInterface
+class ImportController extends ActionController
 {
     /**
      * Module settings
@@ -63,26 +69,89 @@ class ImportController extends ActionController implements LoggerInterface
         // Get typoscript settings for this module
         /** @var BackendConfigurationManager $configurationManager */
         $configurationManager = $this->objectManager->get('TYPO3\\CMS\\Extbase\\Configuration\\BackendConfigurationManager');
-        $fullConfiguration = $configurationManager->getConfiguration(
+        $fullConfiguration    = $configurationManager->getConfiguration(
             $this->request->getControllerExtensionName(),
             $this->request->getPluginName()
         );
-        $this->settings = $fullConfiguration['settings'];
+        $this->settings       = $fullConfiguration['settings'];
 
         // Get defined languages
         $this->languageSuffices = SysLanguages::suffices($this->settings['languages']);
     }
 
     /**
+     * Status action
+     */
+    public function statusAction()
+    {
+        $this->view->assignMultiple(array(
+            'languages'         => $this->languageSuffices,
+            'registeredImports' => Mapping::getAllExtensionImports()
+        ));
+    }
+
+    /**
+     * Import action
+     *
+     * @param string $extensionKey Extension key
+     *
+     * @throws ErrorException
+     * @throws ReflectionException
+     * @throws IllegalObjectTypeException
+     * @throws InvalidQueryException
+     * @throws UnknownObjectException
+     */
+    public function importAction($extensionKey)
+    {
+        /** @var ImportService $importService */
+        $importService = $this->objectManager->get(
+            ImportService::class,
+            $this->settings,
+            $this->languageSuffices,
+            $this
+        );
+
+        $importService->run($extensionKey);
+
+        try {
+            /** @var ImportService $importService */
+            $importService = $this->objectManager->get(
+                ImportService::class,
+                $this->settings,
+                $this->languageSuffices,
+                $this
+            );
+
+            $importService->run($extensionKey);
+            // If an error occurs
+        } catch (Exception $e) {
+            $this->log($e->getMessage().' thrown in : '.$e->getFile().' on line '.$e->getLine(), FlashMessage::ERROR);
+        }
+    }
+
+    /**
+     * Log a message
+     *
+     * @param string $message Message
+     * @param int $severity   Message severity
+     */
+    public function log($message, $severity = FlashMessage::OK)
+    {
+        $this->addFlashMessage($message, '', $severity);
+    }
+
+    /**
      * Just like the regular $this->addFlashMessage, but will only show the message
      * if module.tx_twimporter.settings.verboseFlashMessages is set to 1
      *
-     * @param string $messageBody The message
+     * @param string $messageBody  The message
      * @param string $messageTitle Optional message title
-     * @param int $severity Optional severity, must be one of \TYPO3\CMS\Core\Messaging\FlashMessage constants
-     * @param bool $storeInSession Optional, defines whether the message should be stored in the session (default) or not
+     * @param int $severity        Optional severity, must be one of \TYPO3\CMS\Core\Messaging\FlashMessage constants
+     * @param bool $storeInSession Optional, defines whether the message should be stored in the session (default) or
+     *                             not
+     *
      * @return void
-     * @throws \InvalidArgumentException if the message body is no string
+     * @throws InvalidArgumentException if the message body is no string
      * @see \TYPO3\CMS\Core\Messaging\FlashMessage
      * @api
      */
@@ -95,50 +164,5 @@ class ImportController extends ActionController implements LoggerInterface
         if (intval($this->settings['verboseFlashMessages']) || ($severity >= AbstractMessage::OK)) {
             parent::addFlashMessage($messageBody, $messageTitle, $severity, $storeInSession);
         }
-    }
-
-    /**
-     * Status action
-     */
-    public function statusAction()
-    {
-        $this->view->assignMultiple(array(
-            'languages' => $this->languageSuffices,
-            'registeredImports' => Mapping::getAllExtensionImports()
-        ));
-    }
-
-    /**
-     * Import action
-     *
-     * @param string $extensionKey Extension key
-     */
-    public function importAction($extensionKey)
-    {
-        try {
-            /** @var ImportService $importService */
-            $importService = $this->objectManager->get(
-                ImportService::class,
-                $this->settings,
-                $this->languageSuffices,
-                $this
-            );
-            $importService->run($extensionKey);
-
-            // If an error occurs
-        } catch (\Exception $e) {
-            $this->log($e->getMessage().' thrown in : '.$e->getFile().' on line '.$e->getLine(), FlashMessage::ERROR);
-        }
-    }
-
-    /**
-     * Log a message
-     *
-     * @param string $message Message
-     * @param int $severity Message severity
-     */
-    public function log($message, $severity = FlashMessage::OK)
-    {
-        $this->addFlashMessage($message, '', $severity);
     }
 }

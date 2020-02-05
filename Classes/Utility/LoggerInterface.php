@@ -42,10 +42,47 @@ namespace Tollwerk\TwImporter\Utility;
 interface LoggerInterface
 {
     /**
+     * States
+     */
+    const STAGE_IDLE = 0;
+    const STAGE_PREPARATION = 1;
+    const STAGE_IMPORTING = 2;
+    const STAGE_FINALIZING = 3;
+    const STAGE_FINISHED = 4;
+    const STAGE_ERROR = 5;
+
+    /**
      * Log a message
      *
      * @param string $message Message
      * @param int $severity Message severity
      */
-    public function log($message, $severity);
+    public function log(string $message, int $severity);
+
+    /**
+     * Set the current import stage
+     *
+     * @param int $stage Import stage
+     *
+     * @return void
+     */
+    public function stage(int $stage);
+
+    /**
+     * Set the total number of records
+     *
+     * @param int $count Number of records
+     *
+     * @return void
+     */
+    public function count(int $count);
+
+    /**
+     * Set the current record index
+     *
+     * @param int $step Current record index
+     *
+     * @return void
+     */
+    public function step(int $step);
 }

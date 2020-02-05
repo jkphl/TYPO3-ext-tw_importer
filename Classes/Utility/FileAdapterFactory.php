@@ -26,10 +26,13 @@
 
 namespace Tollwerk\TwImporter\Utility;
 
+use FluidTYPO3\Vhs\ViewHelpers\DebugViewHelper;
 use Tollwerk\TwImporter\Utility\FileAdapter\CsvAdapter;
+use Tollwerk\TwImporter\Utility\FileAdapter\ExcelAdapter;
 use Tollwerk\TwImporter\Utility\FileAdapter\FileAdapterInterface;
 use Tollwerk\TwImporter\Utility\FileAdapter\OpenDocumentFormatAdapter;
 use TYPO3\CMS\Extbase\Object\ObjectManager;
+use TYPO3\CMS\Extbase\Utility\DebuggerUtility;
 
 /**
  * File adapter factory
@@ -51,6 +54,16 @@ class FileAdapterFactory
     protected static $fileAdapters = [
         OpenDocumentFormatAdapter::NAME => OpenDocumentFormatAdapter::class,
         CsvAdapter::NAME => CsvAdapter::class,
+        ExcelAdapter::NAME => ExcelAdapter::class,
+    ];
+
+    /**
+     * Registered file adapters
+     *
+     * @var array
+     */
+    protected static $fileExcelAdapters = [
+        ExcelAdapter::NAME => ExcelAdapter::class,
     ];
 
     /**
@@ -63,6 +76,7 @@ class FileAdapterFactory
      */
     public function getAdapterByName(array $nameConfig, LoggerInterface $logger)
     {
+        //$nameConfig array mapping.php
         $name = trim($nameConfig['name']);
 
         // If the file adapter name is unknown

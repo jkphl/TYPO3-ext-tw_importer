@@ -28,6 +28,7 @@
 
 namespace Tollwerk\TwImporter\Domain\Repository;
 
+use TYPO3\CMS\Extbase\Persistence\QueryResultInterface;
 use TYPO3\CMS\Extbase\Persistence\Repository;
 
 /**
@@ -43,7 +44,7 @@ abstract class AbstractEnhancedRepository extends Repository
      * @param integer $itemsPerPage Limit for the query
      * @param string $sortBy Field to order by. Please note: It's possible to attach |DESC or |ASC to the $sortBy string :-)
      * @param string $ascDesc ASC / DESC or see \TYPO3\CMS\Extbase\Persistence\QueryInterface::ORDER_ASCENDING etc.
-     * @return \array               Matching records
+     * @return array|QueryResultInterface
      */
     public function findByUids($uids, $page = 0, $itemsPerPage = 0, $sortBy = null, $ascDesc = null)
     {

@@ -3,12 +3,12 @@
 /**
  * Fischer Automobile
  *
- * @category Jkphl
- * @package Jkphl\Rdfalite
+ * @category   Jkphl
+ * @package    Jkphl\Rdfalite
  * @subpackage Tollwerk\TwImporter\Utility\FileAdapter
- * @author Joschi Kuphal <joschi@tollwerk.de> / @jkphl
- * @copyright Copyright © 2017 Joschi Kuphal <joschi@tollwerk.de> / @jkphl
- * @license http://opensource.org/licenses/MIT The MIT License (MIT)
+ * @author     Joschi Kuphal <joschi@tollwerk.de> / @jkphl
+ * @copyright  Copyright © 2017 Joschi Kuphal <joschi@tollwerk.de> / @jkphl
+ * @license    http://opensource.org/licenses/MIT The MIT License (MIT)
  */
 
 /***********************************************************************************
@@ -36,6 +36,7 @@
 
 namespace Tollwerk\TwImporter\Utility\FileAdapter;
 
+use ErrorException;
 use Tollwerk\TwImporter\Utility\File\OpenDocumentFormatFile;
 use TYPO3\CMS\Core\Messaging\FlashMessage;
 
@@ -62,9 +63,12 @@ class OpenDocumentFormatAdapter extends AbstractFileAdapter
      * Import a file
      *
      * @param string $extensionKey Extension key
+     * @param string $importFile   Optional: Import file
+     *
      * @return int Number of imported records
+     * @throws ErrorException
      */
-    public function import($extensionKey)
+    public function import(string $extensionKey, string $importFile = null): int
     {
         // Find import directory
         $importDirectory = $this->fileUtility->validateDirectory(self::BASE_DIRECTORY.$extensionKey);
@@ -85,7 +89,7 @@ class OpenDocumentFormatAdapter extends AbstractFileAdapter
         // Parse the import file into the prepared temporary import table
         $this->logger->log('Reading import file ...', FlashMessage::OK);
         $skippedColumns = [];
-        $rowCount = $this->fileUtility->processFile(
+        $rowCount       = $this->fileUtility->processFile(
             $extensionKey,
             $importFile,
             $mapping,

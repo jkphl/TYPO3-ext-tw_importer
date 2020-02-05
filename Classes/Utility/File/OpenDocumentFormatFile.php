@@ -27,7 +27,6 @@
 namespace Tollwerk\TwImporter\Utility\File;
 
 use Tollwerk\TwImporter\Utility\Database;
-use Tollwerk\TwImporter\Utility\File\AbstractFile;
 
 /**
  * Open Document Format file
@@ -40,12 +39,14 @@ class OpenDocumentFormatFile extends AbstractFile
      * Reads the first usable .ods file inside the import $directory,
      * creates a temporary XML file and returns the corresponding path
      *
-     * @param string $directory Import directory
+     * @param string $directory       Import directory
+     * @param string|null $importFile Optional: Import File
+     *
      * @return string Import file path
      * @throws \ErrorException If there's no suitable file in the directory
      * @throws \ErrorException If the import file is invalid
      */
-    public function getImportFile($directory)
+    public function getImportFile($directory, string $importFile = null): string
     {
         // Get all available .ods files in the $directory
         $importFiles = glob($directory.DIRECTORY_SEPARATOR.'*.ods');
@@ -71,18 +72,19 @@ class OpenDocumentFormatFile extends AbstractFile
     /**
      * Process the import file
      *
-     * @param string $extensionKey Extension key
-     * @param string $filePath File path
-     * @param array $mapping Column mapping
-     * @param Database $database Database utility
+     * @param string $extensionKey  Extension key
+     * @param string $filePath      File path
+     * @param array $mapping        Column mapping
+     * @param Database $database    Database utility
      * @param array $skippedColumns Skipped columns (set by reference)
+     *
      * @return int Number of imported records
      */
     public function processFile($extensionKey, $filePath, $mapping, Database $database, &$skippedColumns = [])
     {
         $columnHeaders = null;
-        $document = new \DOMDocument;
-        $xpath = new \DOMXPath($document);
+        $document      = new \DOMDocument;
+        $xpath         = new \DOMXPath($document);
         $xpath->registerNamespace('table', 'urn:oasis:names:tc:opendocument:xmlns:table:1.0');
         $xpath->registerNamespace('text', 'urn:oasis:names:tc:opendocument:xmlns:text:1.0');
         $reader = new \XMLReader();
@@ -114,7 +116,7 @@ class OpenDocumentFormatFile extends AbstractFile
                 } else {
 
                     $mappingKeys = array_keys($mapping);
-                    $record = array_fill_keys($mappingKeys, '');
+                    $record      = array_fill_keys($mappingKeys, '');
 
                     // Run through all columns
                     foreach ($columns as $columnIndex => $columnValue) {
@@ -142,12 +144,14 @@ class OpenDocumentFormatFile extends AbstractFile
      * Returns the xml of a .ods file
      *
      * @param $file
+     *
      * @return bool|null|string
      */
     protected function _processODSFile($file)
     {
         if (@filesize($file) && ($zip = new \ZipArchive()) && ($zip->open($file) === true) && strlen($data = $zip->getFromName('content.xml'))) {
             $this->_tmpFiles[] = $tmpfile = tempnam(sys_get_temp_dir(), 'blog_');
+
             return file_put_contents($tmpfile, $data) ? $tmpfile : false;
         } else {
             return null;
@@ -159,11 +163,12 @@ class OpenDocumentFormatFile extends AbstractFile
      *
      * @param \DOMElement $row Row element
      * @param \DOMXPath $xpath XPath processor
+     *
      * @return \array                    Array
      */
     protected function _importXMLRow(\DOMElement $row, \DOMXPath $xpath)
     {
-        $cells = [];
+        $cells       = [];
         $columnIndex = 0;
 
         // Run through all cells

@@ -26,31 +26,23 @@ namespace Tollwerk\TwImporter\Utility;
  *  This copyright notice MUST APPEAR in all copies of the script!
  ***************************************************************/
 
+use ErrorException;
+use ReflectionClass;
+use ReflectionException;
 use Tollwerk\TwImporter\Domain\Model\AbstractImportable;
 use Tollwerk\TwImporter\Domain\Model\TranslatableInterface;
 use Tollwerk\TwImporter\Domain\Repository\AbstractImportableRepository;
 use TYPO3\CMS\Core\Utility\GeneralUtility;
 use TYPO3\CMS\Extbase\Object\ObjectManager;
+use TYPO3\CMS\Extbase\Persistence\Exception\IllegalObjectTypeException;
+use TYPO3\CMS\Extbase\Persistence\Exception\UnknownObjectException;
 use TYPO3\CMS\Extbase\Persistence\Generic\PersistenceManager;
 
 /**
  * Utility class for getting bits of information via AJAX
  */
-class Object
+class ItemUtility
 {
-    /**
-     * Object manager
-     *
-     * @var ObjectManager
-     */
-    protected $objectManager = null;
-
-    /**
-     * Persistence Manager
-     *
-     * @var PersistenceManager
-     */
-    protected $persistenceManager = null;
     /**
      * Creation status
      *
@@ -63,75 +55,53 @@ class Object
      * @var string
      */
     const STATUS_UPDATE = 'update';
-
+    /**
+     * Object manager
+     *
+     * @var ObjectManager
+     */
+    protected $objectManager = null;
+    /**
+     * Persistence Manager
+     *
+     * @var PersistenceManager
+     */
+    protected $persistenceManager = null;
     /**
      * Array for storing current parent objects when
      * ImportController->_importRecords() get's called recursively
      *
      * @var array
      */
-    protected $parentRegistry = array();
+    protected $parentRegistry = [];
 
     /**
      * Update statistics counter
      *
      * @var array
      */
-    protected $updatedObjectsCounter = array();
-
-    /**
-     * @param string $modelClass
-     * @param AbstractImportableRepository $repository
-     * @param int $pid
-     * @param int $importId
-     * @return AbstractImportable
-     */
-    protected function createObject(
-        $modelClass,
-        $repository,
-        $pid,
-        $importId,
-        $translationParent = null,
-        $sysLanguage = null
-    ) {
-        /**
-         * @var AbstractImportable $object
-         */
-        $object = $this->objectManager->get($modelClass);
-        $object->setPid($pid);
-        $object->_setProperty(
-            GeneralUtility::underscoredToLowerCamelCase($repository->getIdentifierColumn()),
-            $importId
-        );
-
-        if ($translationParent && $sysLanguage) {
-            $object->_setProperty('_languageUid', $sysLanguage);
-            $object->setTranslationLanguage($sysLanguage);
-            $object->setTranslationParent($translationParent);
-        }
-
-        $repository->add($object);
-        $this->persistenceManager->persistAll();
-
-        return $object;
-    }
+    protected $updatedObjectsCounter = [];
 
     /**
      * Get or create a new importable object
      *
      * @param string $modelClass Model class
      * @param array $modelConfig Model configuration
-     * @param int $importId Unique identifier
-     * @param int $sysLanguage System language
-     * @return AbstractImportable Importable object
-     * @throws \ErrorException If the model doesn't support localization but localization was requested
+     * @param int $importId      Unique identifier
+     * @param int $sysLanguage   System language
+     *
+     * @return array Importable object
+     * @throws ErrorException If the model doesn't support localization but localization was requested
+     * @throws ReflectionException
+     * @throws IllegalObjectTypeException
      */
     public function findOrCreateImportableObject($modelClass, $modelConfig, $importId, $sysLanguage)
     {
         // If the model doesn't support localization but localization was requested
-        $reflectionClass = new \ReflectionClass($modelClass);
+        $reflectionClass = new ReflectionClass($modelClass);
+
         if (($sysLanguage > 0) && !$reflectionClass->implementsInterface(TranslatableInterface::class)) {
-            throw new \ErrorException('Object doesn\'t support localization');
+            throw new ErrorException('Object doesn\'t support localization');
         }
 
         /** @var AbstractImportableRepository $repository */
@@ -154,12 +124,12 @@ class Object
 
         // For non-default languages we need an orig translation, so error if unavailable
         if (!$object instanceof $modelClass) {
-            throw new \ErrorException('Couldn\'t find default translation model');
+            throw new ErrorException('Couldn\'t find default translation model');
         }
 
         // For non-default languages we need an original translation, so fail if unavailable
         if (!$object instanceof $modelClass) {
-            throw new \ErrorException('Couldn\'t find default translation model');
+            throw new ErrorException('Couldn\'t find default translation model');
         }
 
         // Find or create translation record
@@ -173,7 +143,7 @@ class Object
                 $object,
                 $sysLanguage
             );
-            $status = self::STATUS_CREATE;
+            $status           = self::STATUS_CREATE;
             $this->persistenceManager->persistAll();
         } else {
             $translatedObject->setDeleted(false);
@@ -183,12 +153,56 @@ class Object
     }
 
     /**
+     * @param string $modelClass
+     * @param AbstractImportableRepository $repository
+     * @param int $pid
+     * @param int $importId
+     * @param null $translationParent
+     * @param null $sysLanguage
+     *
+     * @return AbstractImportable
+     * @throws IllegalObjectTypeException
+     */
+    protected function createObject(
+        $modelClass,
+        $repository,
+        $pid,
+        $importId,
+        $translationParent = null,
+        $sysLanguage = null
+    ) {
+        /**
+         * @var AbstractImportable $object
+         */
+        $object = $this->objectManager->get($modelClass);
+        $object->setPid($pid);
+        $object->_setProperty(
+            GeneralUtility::underscoredToLowerCamelCase($repository->getIdentifierColumn()),
+            intval($importId)
+        );
+
+        if ($translationParent && $sysLanguage) {
+            $object->_setProperty('_languageUid', $sysLanguage);
+            $object->setTranslationLanguage($sysLanguage);
+            $object->setTranslationParent($translationParent);
+        }
+
+        $repository->add($object);
+        $this->persistenceManager->persistAll();
+
+        return $object;
+    }
+
+    /**
      * Persist an updated object
      *
-     * @param string $modelClass Model class
-     * @param array $modelConfig Model configuration
+     * @param string $modelClass         Model class
+     * @param array $modelConfig         Model configuration
      * @param AbstractImportable $object Updated object
+     *
      * @return void
+     * @throws IllegalObjectTypeException
+     * @throws UnknownObjectException
      */
     public function update($modelClass, array $modelConfig, AbstractImportable $object)
     {
@@ -207,11 +221,14 @@ class Object
     /**
      * Register an object with its hierarchical parent object
      *
-     * @param AbstractImportable $object Child object
-     * @param array $modelConf Child model configuration
+     * @param AbstractImportable $object       Child object
+     * @param array $modelConf                 Child model configuration
      * @param AbstractImportable $parentObject Parent object
+     *
      * @return boolean Success
-     * @throws \ErrorException If the registration method is not available
+     * @throws ErrorException If the registration method is not available
+     * @throws ReflectionException
+     * @throws UnknownObjectException
      */
     public function registerWithParentObject(
         AbstractImportable $object,
@@ -219,16 +236,16 @@ class Object
         AbstractImportable $parentObject
     ) {
         // TODO: Add option to exclude children (mm relations etc.) from translation / use l10n_mode etc. from TCA
-
         // Determine the registration method (config or convention)
-        $registrationMethod = 'add'.(new \ReflectionClass(get_class($object)))->getShortName();
+        $registrationMethod = 'add'.(new ReflectionClass(get_class($object)))->getShortName();
+
         if (!empty($modelConf['registerWithParentMethod'])) {
             $registrationMethod = $modelConf['registerWithParentMethod'];
         }
 
         // If the registration method is not available
         if (!is_callable([$parentObject, $registrationMethod])) {
-            throw new \ErrorException('Registration method '.get_class($parentObject).'->'.$registrationMethod.' is not callable');
+            throw new ErrorException('Registration method '.get_class($parentObject).'->'.$registrationMethod.' is not callable');
         }
 
         // Register the child
