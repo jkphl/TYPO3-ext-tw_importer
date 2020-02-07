@@ -48,6 +48,30 @@ class Mapping
      * @var array
      */
     protected static $cacheColumns = null;
+    /**
+     * Status: Hierarchy conditions are met
+     *
+     * @var int
+     */
+    const STATUS_OK = 0;
+    /**
+     * Status: Enable column condition unmet
+     *
+     * @var int
+     */
+    const STATUS_ENABLE = 1;
+    /**
+     * Status: Must-be column condition unmet
+     *
+     * @var int
+     */
+    const STATUS_MUSTBE = 2;
+    /**
+     * Status: Must-be-empty column condition unmet
+     *
+     * @var int
+     */
+    const STATUS_MUSTBEEMPTY = 3;
 
     /**
      * Return all extension import configurations
@@ -259,30 +283,40 @@ class Mapping
      * @param array $record     Record
      * @param array $objectConf Object configuration
      *
-     * @return boolean Hierarchy pre-conditions match
+     * @return int Hierarchy pre-conditions status
      */
-    public function checkHierarchyConditions($record, $objectConf)
+    public function checkHierarchyConditions($record, $objectConf): int
     {
+        // Check all fields that are enable columns
+        $enableColumns = $objectConf['conditions']['enableColumns'] ?? null;
+        if (is_array($enableColumns) && count($enableColumns)) {
+            foreach ($enableColumns as $fieldname) {
+                if (empty($record[$fieldname])) {
+                    return self::STATUS_ENABLE;
+                }
+            }
+        }
+
         // Check all fields that must be set
-        $mustBeSet = isset($objectConf['conditions']['mustBeSet']) ? $objectConf['conditions']['mustBeSet'] : null;
+        $mustBeSet = $objectConf['conditions']['mustBeSet'] ?? null;
         if (is_array($mustBeSet) && count($mustBeSet)) {
             foreach ($mustBeSet as $fieldname) {
                 if (empty($record[$fieldname])) {
-                    return false;
+                    return self::STATUS_MUSTBE;
                 }
             }
         }
 
         // Check all fields that must be empty
-        $mustBeEmpty = isset($objectConf['conditions']['mustBeEmpty']) ? $objectConf['conditions']['mustBeEmpty'] : null;
+        $mustBeEmpty = $objectConf['conditions']['mustBeEmpty'] ?? null;
         if (is_array($mustBeEmpty) && count($mustBeEmpty)) {
             foreach ($mustBeEmpty as $fieldname) {
                 if (!empty($record[$fieldname])) {
-                    return false;
+                    return self::STATUS_MUSTBEEMPTY;
                 }
             }
         }
 
-        return true;
+        return self::STATUS_OK;
     }
 }

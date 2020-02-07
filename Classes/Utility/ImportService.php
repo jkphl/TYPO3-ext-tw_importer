@@ -35,10 +35,12 @@ use Tollwerk\TwImporter\Domain\Model\TranslatableInterface;
 use Tollwerk\TwImporter\Domain\Repository\AbstractImportableRepository;
 use Tollwerk\TwImporter\Utility\FileAdapter\FileAdapterInterface;
 use TYPO3\CMS\Core\Messaging\FlashMessage;
+use TYPO3\CMS\Core\Utility\GeneralUtility;
 use TYPO3\CMS\Extbase\Object\ObjectManager;
 use TYPO3\CMS\Extbase\Persistence\Exception\IllegalObjectTypeException;
 use TYPO3\CMS\Extbase\Persistence\Exception\InvalidQueryException;
 use TYPO3\CMS\Extbase\Persistence\Exception\UnknownObjectException;
+use TYPO3\CMS\Extbase\Persistence\Generic\PersistenceManager;
 
 /**
  * Import service
@@ -210,7 +212,7 @@ class ImportService
         // Iterate over all temporary records
         foreach ($temporaryRecords as $step => $temporaryRecord) {
             $recordCache = $this->mappingUtility->buildRecordCache($extensionKey, $temporaryRecord);
-            $this->importTemporaryRecord(
+            $importId    = $this->importTemporaryRecord(
                 $extensionKey,
                 $temporaryRecord,
                 key($hierarchy),
@@ -218,13 +220,16 @@ class ImportService
                 $recordCache,
                 0
             );
-            $this->logger->step($step);
+            $this->logger->step($step, $importId);
         }
 
         if ($this->currentMasterObject) {
             $this->currentMasterObject->finalizeImport($recordCache);
             $this->currentMasterObject = null;
         }
+
+        // Persist all unpersisted objects
+        GeneralUtility::makeInstance(ObjectManager::class)->get(PersistenceManager::class)->persistAll();
     }
 
     /**
@@ -238,6 +243,7 @@ class ImportService
      * @param int $level                       Indentation level
      * @param AbstractImportable $parentObject Parent object
      *
+     * @return string Import ID
      * @throws ErrorException
      * @throws IllegalObjectTypeException
      * @throws ReflectionException
@@ -251,7 +257,7 @@ class ImportService
         array $recordCache,
         int $level = 0,
         AbstractImportable $parentObject = null
-    ) {
+    ): string {
         $importIdField = $modelConfig['importIdField'] ?? 'tx_twimporter_id';
 
         // If the import id is a compound key
@@ -263,8 +269,9 @@ class ImportService
             $importId = empty($record[$importIdField]) ? null : $record[$importIdField];
         }
 
-        // If the pre-conditions for creating a new master object are met
-        if ($this->mappingUtility->checkHierarchyConditions($record, $modelConfig)) {
+        // If the pre-conditions for creating a new master object are all met
+        $conditionsStatus = $this->mappingUtility->checkHierarchyConditions($record, $modelConfig);
+        if ($conditionsStatus == Mapping::STATUS_OK) {
 
             // If this is going to be a top-level object and there's a previous master object: Finalize & close
             if (!$parentObject && ($this->currentMasterObject instanceof AbstractImportable)) {
@@ -308,6 +315,17 @@ class ImportService
                 $object->finalizeImport($recordCache);
             }
 
+            // Else: If the row is disabled and it's a top-level object and there's a current master object:
+            // Finalize the master object and skip the row
+        } elseif (!$parentObject && ($conditionsStatus == Mapping::STATUS_ENABLE) && ($this->currentMasterObject instanceof AbstractImportable)) {
+            $this->currentMasterObject->finalizeImport($recordCache);
+            $this->currentMasterObject = null;
+
+            $this->logger->log(
+                sprintf('Pre-conditions not met (%s) for record "%s", skipping ...', $conditionsStatus, $importId),
+                FlashMessage::WARNING
+            );
+
             // Else: If there's no parent but a current master object
         } elseif (!$parentObject && ($this->currentMasterObject instanceof AbstractImportable)) {
 
@@ -324,10 +342,12 @@ class ImportService
             // Else: Log a skip message
         } else {
             $this->logger->log(
-                sprintf('Pre-conditions not met for record "%s", skipping ...', $importId),
+                sprintf('Pre-conditions not met (%s) for record "%s", skipping ...', $conditionsStatus, $importId),
                 FlashMessage::WARNING
             );
         }
+
+        return strval($importId);
     }
 
     /**

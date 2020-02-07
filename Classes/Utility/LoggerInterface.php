@@ -3,12 +3,12 @@
 /**
  * Fischer Automobile
  *
- * @category Jkphl
- * @package Jkphl\Rdfalite
+ * @category   Jkphl
+ * @package    Jkphl\Rdfalite
  * @subpackage Tollwerk\TwImporter\Utility
- * @author Joschi Kuphal <joschi@tollwerk.de> / @jkphl
- * @copyright Copyright © 2017 Joschi Kuphal <joschi@tollwerk.de> / @jkphl
- * @license http://opensource.org/licenses/MIT The MIT License (MIT)
+ * @author     Joschi Kuphal <joschi@tollwerk.de> / @jkphl
+ * @copyright  Copyright © 2017 Joschi Kuphal <joschi@tollwerk.de> / @jkphl
+ * @license    http://opensource.org/licenses/MIT The MIT License (MIT)
  */
 
 /***********************************************************************************
@@ -55,7 +55,7 @@ interface LoggerInterface
      * Log a message
      *
      * @param string $message Message
-     * @param int $severity Message severity
+     * @param int $severity   Message severity
      */
     public function log(string $message, int $severity);
 
@@ -80,9 +80,10 @@ interface LoggerInterface
     /**
      * Set the current record index
      *
-     * @param int $step Current record index
+     * @param int $step        Current record index
+     * @param string $importId Import ID
      *
      * @return void
      */
-    public function step(int $step);
+    public function step(int $step, string $importId);
 }

@@ -90,10 +90,10 @@ class ExcelFile extends AbstractFile
     {
         $spreadsheet     = IOFactory::load($filePath);
         $affectedRows    = 0;
-        $importSheetName = $this->config['importSheet'] ?: 'Import';
-        $skipRows        = intval($this->config['skipRows'] ?: 0);
-        $limitRows       = intval($this->config['limitRows'] ?: 0);
-        $columnNameRow   = max(intval($this->config['columnNameRow'] ?: 1), 1);
+        $importSheetName = $this->config['importSheet'] ?? 'Import';
+        $skipRows        = intval($this->config['skipRows'] ?? 0);
+        $limitRows       = intval($this->config['limitRows'] ?? 0);
+        $columnNameRow   = max(intval($this->config['columnNameRow'] ?? 1), 1);
 
         // If the import sheet exists in the file
         if ($spreadsheet->sheetNameExists($importSheetName)) {
