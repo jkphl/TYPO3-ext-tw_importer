@@ -32,8 +32,11 @@
 
 namespace Tollwerk\TwImporter\Utility\File;
 
+use ErrorException;
 use PhpOffice\PhpSpreadsheet\Cell\Coordinate;
+use PhpOffice\PhpSpreadsheet\Exception as OfficeException;
 use PhpOffice\PhpSpreadsheet\IOFactory;
+use PhpOffice\PhpSpreadsheet\Reader\Exception;
 use Tollwerk\TwImporter\Utility\Database;
 
 /**
@@ -53,7 +56,7 @@ class ExcelFile extends AbstractFile
      * @param string|null $importFile Optional: Import File
      *
      * @return string Import file path
-     * @throws \ErrorException If the import file is invalid
+     * @throws ErrorException If the import file is invalid
      */
     public function getImportFile($directory, string $importFile = null): string
     {
@@ -67,7 +70,7 @@ class ExcelFile extends AbstractFile
 
         // If there's no suitable file in the directory
         if (!count($importFiles)) {
-            throw new \ErrorException('No import file available. Quitting');
+            throw new ErrorException('No import file available. Quitting');
         }
 
         return $importFiles[0];
@@ -83,8 +86,9 @@ class ExcelFile extends AbstractFile
      * @param array $skippedColumns Skipped columns (set by reference)
      *
      * @return int Number of imported records
-     * @throws \PhpOffice\PhpSpreadsheet\Exception
-     * @throws \PhpOffice\PhpSpreadsheet\Reader\Exception
+     * @throws ErrorException
+     * @throws Exception
+     * @throws OfficeException
      */
     public function processFile($extensionKey, $filePath, $mapping, Database $database, &$skippedColumns = [])
     {
@@ -121,6 +125,14 @@ class ExcelFile extends AbstractFile
 
                 $affectedRows += $database->insertRow($extensionKey, $insertValues);
             }
+        } else {
+            throw new ErrorException(
+                sprintf('No spreadsheet named "%s"', $importSheetName),
+                1584527971,
+                E_USER_WARNING,
+                __FILE__,
+                __LINE__
+            );
         }
 
         return $affectedRows;

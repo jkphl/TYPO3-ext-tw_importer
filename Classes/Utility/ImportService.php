@@ -146,11 +146,7 @@ class ImportService
         $this->logger->log('Extracted '.$records.' records from import file', FlashMessage::OK);
         $this->logger->stage(LoggerInterface::STAGE_IMPORTING);
 
-        // TODO: implement filterRecords() (Flag for updating / not updating in import file etc.)
-        $this->logger->stage(LoggerInterface::STAGE_IDLE);
         $this->importTemporaryRecords($extensionKey);
-
-        // TODO: move import file to archive before further processing (if(settings->archive))
 
         $this->logger->stage(LoggerInterface::STAGE_FINALIZING);
 
