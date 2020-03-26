@@ -95,6 +95,12 @@ class ImportService
      * @var AbstractImportable
      */
     protected $currentMasterObject = null;
+    /**
+     * Current record cache
+     *
+     * @var array
+     */
+    protected $currentRecordCache = null;
 
     /**
      * Import service constructor
@@ -199,6 +205,7 @@ class ImportService
     protected function importTemporaryRecords($extensionKey)
     {
         $this->currentMasterObject = null;
+        $this->currentRecordCache  = null;
         $hierarchy                 = $this->mappingUtility->getHierarchy($extensionKey);
         $temporaryRecords          = $this->dbUtility->getTemporaryRecords($extensionKey);
 
@@ -220,8 +227,9 @@ class ImportService
         }
 
         if ($this->currentMasterObject) {
-            $this->currentMasterObject->finalizeImport($recordCache);
+            $this->currentMasterObject->finalizeImport($this->currentRecordCache);
             $this->currentMasterObject = null;
+            $this->currentRecordCache  = null;
         }
 
         // Persist all unpersisted objects
@@ -268,11 +276,11 @@ class ImportService
         // If the pre-conditions for creating a new master object are all met
         $conditionsStatus = $this->mappingUtility->checkHierarchyConditions($record, $modelConfig);
         if ($conditionsStatus == Mapping::STATUS_OK) {
-
             // If this is going to be a top-level object and there's a previous master object: Finalize & close
             if (!$parentObject && ($this->currentMasterObject instanceof AbstractImportable)) {
-                $this->currentMasterObject->finalizeImport($recordCache);
+                $this->currentMasterObject->finalizeImport($this->currentRecordCache);
                 $this->currentMasterObject = null;
+                $this->currentRecordCache  = null;
             }
 
             $sysLanguage     = -1;
@@ -301,6 +309,7 @@ class ImportService
             // If this is a top-level object: Register as master object
             if (!$parentObject) {
                 $this->currentMasterObject = $object;
+                $this->currentRecordCache  = $recordCache;
             }
 
             // Recursively call for child models
@@ -314,8 +323,9 @@ class ImportService
             // Else: If the row is disabled and it's a top-level object and there's a current master object:
             // Finalize the master object and skip the row
         } elseif (!$parentObject && ($conditionsStatus == Mapping::STATUS_ENABLE) && ($this->currentMasterObject instanceof AbstractImportable)) {
-            $this->currentMasterObject->finalizeImport($recordCache);
+            $this->currentMasterObject->finalizeImport($this->currentRecordCache);
             $this->currentMasterObject = null;
+            $this->currentRecordCache  = null;
 
             $this->logger->log(
                 sprintf('Pre-conditions not met (%s) for record "%s", skipping ...', $conditionsStatus, $importId),
