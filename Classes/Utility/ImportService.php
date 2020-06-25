@@ -283,6 +283,12 @@ class ImportService
                 $this->currentRecordCache  = null;
             }
 
+            $this->logger->log(
+                sprintf('Condition ok (%s) for record "%s", importing ...', $conditionsStatus, $importId),
+                FlashMessage::INFO
+            );
+
+
             $sysLanguage     = -1;
             $langSuffix      = null;
             $reflectionClass = new ReflectionClass($modelClass);
