@@ -104,16 +104,6 @@ class ImportController extends ActionController implements LoggerInterface
      */
     public function importAction($extensionKey)
     {
-        /** @var ImportService $importService */
-        $importService = $this->objectManager->get(
-            ImportService::class,
-            $this->settings,
-            $this->languageSuffices,
-            $this
-        );
-
-        $importService->run($extensionKey);
-
         try {
             /** @var ImportService $importService */
             $importService = $this->objectManager->get(
