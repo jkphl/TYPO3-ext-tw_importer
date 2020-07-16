@@ -363,44 +363,6 @@ class ImportService
     }
 
     /**
-     * Process pendent objects
-     *
-     * @param string $extensionKey             Extension key
-     * @param array $record                    Temporary record
-     * @param array $modelConfig               Model configuration
-     * @param array $recordCache               Internal record cache
-     * @param int $level                       Indentation level
-     * @param AbstractImportable $parentObject Parent object
-     *
-     * @throws ErrorException
-     * @throws IllegalObjectTypeException
-     * @throws ReflectionException
-     * @throws UnknownObjectException
-     */
-    protected function processPendentObjects(
-        string $extensionKey,
-        array $record,
-        array $modelConfig,
-        array $recordCache,
-        int $level,
-        AbstractImportable $parentObject
-    ) {
-        if (!empty($modelConfig['children']) && is_array($modelConfig['children'])) {
-            foreach ($modelConfig['children'] as $childModelClass => $childModelConfig) {
-                $this->importTemporaryRecord(
-                    $extensionKey,
-                    $record,
-                    $childModelClass,
-                    $childModelConfig,
-                    $recordCache,
-                    $level + 1,
-                    $parentObject
-                );
-            }
-        }
-    }
-
-    /**
      * Import a simple temporary record
      *
      * @param string $extensionKey             Extension key
@@ -408,7 +370,7 @@ class ImportService
      * @param string $modelClass               Model class
      * @param array $modelConfig               Model configuration
      * @param int $level                       Indentation level
-     * @param string $importId                 Unique import identifier
+     * @param mixed $importId                  Unique import identifier
      * @param int $sysLanguage                 System language (-1 for all languages / non-translatable)
      * @param string $langSuffix               Language suffix
      * @param AbstractImportable $parentObject Parent object
@@ -476,6 +438,44 @@ class ImportService
         }
 
         return self::$mappings[$extensionKey];
+    }
+
+    /**
+     * Process pendent objects
+     *
+     * @param string $extensionKey             Extension key
+     * @param array $record                    Temporary record
+     * @param array $modelConfig               Model configuration
+     * @param array $recordCache               Internal record cache
+     * @param int $level                       Indentation level
+     * @param AbstractImportable $parentObject Parent object
+     *
+     * @throws ErrorException
+     * @throws IllegalObjectTypeException
+     * @throws ReflectionException
+     * @throws UnknownObjectException
+     */
+    protected function processPendentObjects(
+        string $extensionKey,
+        array $record,
+        array $modelConfig,
+        array $recordCache,
+        int $level,
+        AbstractImportable $parentObject
+    ) {
+        if (!empty($modelConfig['children']) && is_array($modelConfig['children'])) {
+            foreach ($modelConfig['children'] as $childModelClass => $childModelConfig) {
+                $this->importTemporaryRecord(
+                    $extensionKey,
+                    $record,
+                    $childModelClass,
+                    $childModelConfig,
+                    $recordCache,
+                    $level + 1,
+                    $parentObject
+                );
+            }
+        }
     }
 
     /**

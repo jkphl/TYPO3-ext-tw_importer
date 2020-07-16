@@ -10,7 +10,7 @@
  * "version" and "dependencies" must not be touched!
  ***************************************************************/
 
-$EM_CONF[$_EXTKEY] = array(
+$EM_CONF[$_EXTKEY] = [
     'title' => 'tollwerk Importer',
     'description' => 'General purpose mass importer module',
     'category' => 'plugin',
@@ -22,13 +22,13 @@ $EM_CONF[$_EXTKEY] = array(
     'createDirs' => 'fileadmin/user_upload/import',
     'clearCacheOnLoad' => 0,
     'version' => '',
-    'constraints' => array(
-        'depends' => array(
+    'constraints' => [
+        'depends' => [
             'typo3' => '8.0.0-9.99.99',
             'extbase' => '1.0.0-0.0.0',
             'fluid' => '1.0.0-0.0.0',
-        ),
-        'conflicts' => array(),
-        'suggests' => array(),
-    ),
-);
+        ],
+        'conflicts' => [],
+        'suggests' => [],
+    ],
+];

@@ -101,6 +101,7 @@ abstract class AbstractFileAdapter implements FileAdapterInterface
      * @var string
      */
     const NAME = 'abstract';
+
     /**
      * Import base directory
      *

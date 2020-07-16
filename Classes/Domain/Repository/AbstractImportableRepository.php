@@ -91,7 +91,7 @@ abstract class AbstractImportableRepository extends AbstractEnhancedRepository
     /**
      * Find an object by identifier and PID
      *
-     * @param string $identifier       Identifier
+     * @param mixed $identifier        Identifier
      * @param int $pid                 PID
      * @param bool $ignoreEnableFields Ignore the enable fields
      * @param bool $includeDeleted     Include deleted records

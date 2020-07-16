@@ -87,7 +87,7 @@ class ItemUtility
      *
      * @param string $modelClass Model class
      * @param array $modelConfig Model configuration
-     * @param int $importId      Unique identifier
+     * @param mixed $importId    Unique identifier
      * @param int $sysLanguage   System language
      *
      * @return array Importable object
@@ -156,7 +156,7 @@ class ItemUtility
      * @param string $modelClass
      * @param AbstractImportableRepository $repository
      * @param int $pid
-     * @param int $importId
+     * @param mixed $importId
      * @param null $translationParent
      * @param null $sysLanguage
      *
@@ -178,7 +178,7 @@ class ItemUtility
         $object->setPid($pid);
         $object->_setProperty(
             GeneralUtility::underscoredToLowerCamelCase($repository->getIdentifierColumn()),
-            intval($importId)
+            $importId
         );
 
         if ($translationParent && $sysLanguage) {

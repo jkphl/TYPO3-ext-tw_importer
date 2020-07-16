@@ -32,6 +32,7 @@ use Exception;
 use InvalidArgumentException;
 use ReflectionException;
 use Tollwerk\TwImporter\Utility\ImportService;
+use Tollwerk\TwImporter\Utility\LoggerInterface;
 use Tollwerk\TwImporter\Utility\Mapping;
 use Tollwerk\TwImporter\Utility\SysLanguages;
 use TYPO3\CMS\Core\Messaging\AbstractMessage;
@@ -45,7 +46,7 @@ use TYPO3\CMS\Extbase\Persistence\Exception\UnknownObjectException;
 /**
  * Import controller (backend module)
  */
-class ImportController extends ActionController
+class ImportController extends ActionController implements LoggerInterface
 {
     /**
      * Module settings
@@ -135,7 +136,7 @@ class ImportController extends ActionController
      * @param string $message Message
      * @param int $severity   Message severity
      */
-    public function log($message, $severity = FlashMessage::OK)
+    public function log(string $message, int $severity)
     {
         $this->addFlashMessage($message, '', $severity);
     }
@@ -164,5 +165,42 @@ class ImportController extends ActionController
         if (intval($this->settings['verboseFlashMessages']) || ($severity >= AbstractMessage::OK)) {
             parent::addFlashMessage($messageBody, $messageTitle, $severity, $storeInSession);
         }
+    }
+
+    /**
+     * Set the current import stage
+     *
+     * @param int $stage Import stage
+     *
+     * @return void
+     */
+    public function stage(int $stage)
+    {
+        // Do nothing
+    }
+
+    /**
+     * Set the total number of records
+     *
+     * @param int $count Number of records
+     *
+     * @return void
+     */
+    public function count(int $count)
+    {
+        // Do nothing
+    }
+
+    /**
+     * Set the current record index
+     *
+     * @param int $step        Current record index
+     * @param string $importId Import ID
+     *
+     * @return void
+     */
+    public function step(int $step, string $importId)
+    {
+        // Do nothing
     }
 }
