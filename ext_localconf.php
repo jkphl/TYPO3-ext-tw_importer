@@ -9,5 +9,8 @@ if (!defined('TYPO3_MODE')) {
     'ImportForm',
     [
         'Import' => 'processing',
+    ],
+    [
+        'Import' => 'processing',
     ]
 );
