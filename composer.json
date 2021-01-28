@@ -1,7 +1,8 @@
 {
     "name": "tollwerk/tw-importer",
-    "description": "TYPO3 multi-purpose import service for CSV and OpenOffice data files",
     "type": "typo3-cms-extension",
+    "description": "TYPO3 multi-purpose import service for CSV and OpenOffice data files",
+    "homepage": "https://github.com/tollwerk/TYPO3-ext-tw_importer",
     "license": "GPL-2.0+",
     "authors": [
         {
@@ -9,6 +10,22 @@
             "email": "joschi@tollwerk.de"
         }
     ],
-    "require": {},
+    "autoload": {
+        "psr-4": {
+            "Tollwerk\\TwImporter\\": "Classes/"
+        }
+    },
+    "replace": {
+        "tollwerk/tw-base": "self.version",
+        "typo3-ter/tw_base": "self.version"
+    },
+    "keywords": [
+        "typo3",
+        "extbase",
+        "import"
+    ],
+    "require": {
+        "typo3/cms-core": "^10.4.9"
+    },
     "version": "1.0"
 }
