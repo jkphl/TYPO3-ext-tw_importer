@@ -41,6 +41,7 @@ use TYPO3\CMS\Extbase\Persistence\Exception\IllegalObjectTypeException;
 use TYPO3\CMS\Extbase\Persistence\Exception\InvalidQueryException;
 use TYPO3\CMS\Extbase\Persistence\Exception\UnknownObjectException;
 use TYPO3\CMS\Extbase\Persistence\Generic\PersistenceManager;
+use TYPO3\CMS\Extbase\Utility\DebuggerUtility;
 
 /**
  * Import service
@@ -147,9 +148,19 @@ class ImportService
         $fileAdapterNameConfig = $this->mappingUtility->getAdapter($extensionKey);
         $fileAdapter           = $this->objectManager->get(FileAdapterFactory::class)
                                                      ->getAdapterByName($fileAdapterNameConfig, $this->logger);
+
+        $this->logger->log('Using FileAdapter: ' . get_class($fileAdapter), FlashMessage::NOTICE);
+        $this->logger->log('Settings from import mapping file:', FlashMessage::NOTICE);
+        $this->logger->log('name: '.$fileAdapterNameConfig['name'], FlashMessage::OK);
+        $this->logger->log('config.importSheet: '.$fileAdapterNameConfig['config']['importSheet'], FlashMessage::OK);
+        $this->logger->log('config.columnNameRow: '.$fileAdapterNameConfig['config']['columnNameRow'], FlashMessage::OK);
+        $this->logger->log('config.skipRows: '.$fileAdapterNameConfig['config']['skipRows'], FlashMessage::OK);
+        $this->logger->log('config.limitRows: '.$fileAdapterNameConfig['config']['limitRows'], FlashMessage::OK);
+        $this->logger->log('config.columns: '.$fileAdapterNameConfig['config']['columns'], FlashMessage::OK);
+
         $records               = $fileAdapter->import($extensionKey, $importFile);
 
-        $this->logger->log('Extracted '.$records.' records from import file', FlashMessage::OK);
+        $this->logger->log('Extracted '.$records.' records from import file', FlashMessage::NOTICE);
         $this->logger->stage(LoggerInterface::STAGE_IMPORTING);
 
         $this->importTemporaryRecords($extensionKey);
@@ -188,7 +199,7 @@ class ImportService
             }
         }
 
-        $this->logger->log('Done with import for extension key: '.$extensionKey, FlashMessage::OK);
+        $this->logger->log('Done with import for extension key: '.$extensionKey, FlashMessage::NOTICE);
         $this->logger->stage(LoggerInterface::STAGE_FINISHED);
     }
 
@@ -213,7 +224,10 @@ class ImportService
         $this->logger->count(count($temporaryRecords));
 
         // Iterate over all temporary records
+        $adapterConfig = $this->mappingUtility->getAdapter($extensionKey);
+        $row = intval($adapterConfig['config']['columnNameRow']) + 1;
         foreach ($temporaryRecords as $step => $temporaryRecord) {
+            $this->logger->log('Row ' . $row, FlashMessage::NOTICE);
             $recordCache = $this->mappingUtility->buildRecordCache($extensionKey, $temporaryRecord);
             $importId    = $this->importTemporaryRecord(
                 $extensionKey,
@@ -224,6 +238,7 @@ class ImportService
                 0
             );
             $this->logger->step($step, $importId);
+            $row++;
         }
 
         if ($this->currentMasterObject) {
@@ -285,7 +300,7 @@ class ImportService
 
             $this->logger->log(
                 sprintf('Condition ok (%s) for record "%s", importing ...', $conditionsStatus, $importId),
-                FlashMessage::INFO
+                FlashMessage::OK
             );
 
 
@@ -334,8 +349,8 @@ class ImportService
             $this->currentRecordCache  = null;
 
             $this->logger->log(
-                sprintf('Pre-conditions not met (%s) for record "%s", skipping ...', $conditionsStatus, $importId),
-                FlashMessage::WARNING
+                sprintf('Pre-conditions not met (338)(%s) for record "%s", skipping ...', $conditionsStatus, $importId),
+                $importId ? FlashMessage::OK : FlashMessage::WARNING
             );
 
             // Else: If there's no parent but a current master object
@@ -354,8 +369,8 @@ class ImportService
             // Else: Log a skip message
         } else {
             $this->logger->log(
-                sprintf('Pre-conditions not met (%s) for record "%s", skipping ...', $conditionsStatus, $importId),
-                FlashMessage::WARNING
+                sprintf('Pre-conditions not met (358)(%s) for record "%s", skipping ...', $conditionsStatus, $importId),
+                $importId ? FlashMessage::OK : FlashMessage::WARNING
             );
         }
 

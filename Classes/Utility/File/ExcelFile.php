@@ -38,6 +38,7 @@ use PhpOffice\PhpSpreadsheet\Exception as OfficeException;
 use PhpOffice\PhpSpreadsheet\IOFactory;
 use PhpOffice\PhpSpreadsheet\Reader\Exception;
 use Tollwerk\TwImporter\Utility\Database;
+use TYPO3\CMS\Extbase\Utility\DebuggerUtility;
 
 /**
  * ExcelFile
